@@ -7,18 +7,27 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 /**
  * Guarda una configuración global en la base de datos
  */
-export async function saveAppSettingsAction(key: string, value: any) {
+export async function saveAppSettingsAction(key: string, value: unknown) {
     if (!await isAdmin()) {
         throw new Error('No autorizado');
     }
 
-    const { error } = await supabaseAdmin
-        .from('app_settings')
-        .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    try {
+        const { error } = await supabaseAdmin
+            .from('app_settings')
+            .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
 
-    if (error) {
+        if (error) {
+            console.error(`Error saving setting ${key}:`, error);
+            return { success: false, error: error.message };
+        }
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Error desconocido al guardar la configuración';
         console.error(`Error saving setting ${key}:`, error);
-        return { success: false, error: error.message };
+        return {
+            success: false,
+            error: message,
+        };
     }
 
     revalidatePath('/admin/settings');
@@ -30,8 +39,8 @@ export async function saveAppSettingsAction(key: string, value: any) {
  */
 export async function getAppSettingsAction<T>(key: string): Promise<T | null> {
     const { data, error } = await supabaseAdmin
-        .from('app_settings')
-        .select('value')
+        .from('app_settings') // Revert to 'app_settings' as per original function's intent
+        .select('value') // Revert to 'value' as per original function's intent
         .eq('key', key)
         .single();
 

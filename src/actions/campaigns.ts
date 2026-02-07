@@ -52,11 +52,12 @@ export async function generateCampaignAction(nicheName: string, categoryId?: str
             data: parsedData
         };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Error desconocido al generar la campaña con Gemini';
         console.error('Error generating campaign with Gemini:', error);
         return {
             success: false,
-            error: error.message || 'Error desconocido al generar la campaña con Gemini',
+            error: message,
         };
     }
 }

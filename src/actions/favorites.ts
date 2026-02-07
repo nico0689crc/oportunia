@@ -80,7 +80,7 @@ export async function isFavoriteAction(nicheId: string) {
     const { userId } = await auth();
     if (!userId) return false;
 
-    const { data, error } = await supabaseAdmin
+    const { data } = await supabaseAdmin
         .from('favorites')
         .select('id')
         .eq('user_id', userId)

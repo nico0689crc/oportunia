@@ -10,7 +10,6 @@ import { searchNichesAction } from "@/actions/mercadolibre";
 import { NicheResult } from "@/lib/mercadolibre/niches-improved";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CategorySelector } from "@/components/dashboard/category-selector";
-import { MlCategory } from "@/types/mercadolibre";
 import {
     Dialog,
     DialogContent,
@@ -38,7 +37,7 @@ export default function NichesPage() {
             } else {
                 setError(result.error || "Ocurrió un error");
             }
-        } catch (err: any) {
+        } catch {
             setError("Error al conectar con la API.");
         } finally {
             setLoading(false);

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { getCategoriesAction, getCategoryAction } from "@/actions/mercadolibre";
 import { MlCategory } from "@/types/mercadolibre";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ChevronLeft, Loader2, FolderOpen, Search as SearchIcon } from "lucide-react";
+import { ChevronRight, ChevronLeft, Loader2, FolderOpen } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 
@@ -35,7 +35,7 @@ export function CategorySelector({ onSelect }: CategorySelectorProps) {
             } else {
                 setError(result.error || "Error al cargar categorías");
             }
-        } catch (err) {
+        } catch {
             setError("Error de conexión");
         } finally {
             setLoading(false);
@@ -52,7 +52,6 @@ export function CategorySelector({ onSelect }: CategorySelectorProps) {
 
                 if (fullCategory.children_categories && fullCategory.children_categories.length > 0) {
                     // Si tiene hijos, navegar hacia adentro
-                    // Transformar children_categories (que tienen menos data) a MlCategory
                     const mappedChildren = fullCategory.children_categories.map(c => ({
                         id: c.id,
                         name: c.name,
@@ -67,7 +66,7 @@ export function CategorySelector({ onSelect }: CategorySelectorProps) {
             } else {
                 setError(result.error || "Error al cargar subcategorías");
             }
-        } catch (err) {
+        } catch {
             setError("Error de conexión");
         } finally {
             setLoading(false);
@@ -84,7 +83,6 @@ export function CategorySelector({ onSelect }: CategorySelectorProps) {
             await loadRootCategories();
         } else {
             const parent = newPath[newPath.length - 1];
-            // Volver a cargar el padre para obtener sus hijos
             setLoading(true);
             try {
                 const result = await getCategoryAction(parent.id);
@@ -97,14 +95,12 @@ export function CategorySelector({ onSelect }: CategorySelectorProps) {
                     setCategories(mappedChildren);
                     setPath(newPath);
                 }
+            } catch {
+                setError("Error al volver atrás");
             } finally {
                 setLoading(false);
             }
         }
-    };
-
-    const confirmSelection = (category: MlCategory) => {
-        onSelect(category);
     };
 
     return (

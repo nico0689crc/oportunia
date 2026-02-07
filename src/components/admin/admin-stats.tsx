@@ -7,7 +7,7 @@ interface StatItemProps {
     title: string;
     value: string;
     description: string;
-    icon: any;
+    icon: React.ElementType;
     trend?: {
         value: string;
         positive: boolean;

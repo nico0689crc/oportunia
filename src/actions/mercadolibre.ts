@@ -1,3 +1,5 @@
+'use server';
+
 import { getDynamicMlClient } from '@/lib/mercadolibre/dynamic-client';
 import { NichesProcessorImproved, NicheResult } from '@/lib/mercadolibre/niches-improved';
 import { auth } from '@clerk/nextjs/server';
@@ -31,11 +33,12 @@ export async function searchNichesAction(categoryId: string, categoryName?: stri
             success: true,
             data: results,
         };
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Error desconocido al buscar nichos';
         console.error('Error in searchNichesAction:', error);
         return {
             success: false,
-            error: error.message || 'Error desconocido al buscar nichos',
+            error: message,
         };
     }
 }
@@ -51,10 +54,11 @@ export async function getCategoriesAction() {
             success: true,
             data: categories,
         };
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Error desconocido';
         return {
             success: false,
-            error: error.message,
+            error: message,
         };
     }
 }
@@ -70,10 +74,11 @@ export async function getCategoryAction(categoryId: string) {
             success: true,
             data: category,
         };
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Error desconocido';
         return {
             success: false,
-            error: error.message,
+            error: message,
         };
     }
 }

@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +14,6 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -39,8 +40,8 @@ export function NicheCard({ niche, initialIsFavorite = false }: NicheCardProps) 
             if (result.success) {
                 setIsFavorite(result.isFavorite!);
             }
-        } catch (error) {
-            console.error("Error toggling favorite:", error);
+        } catch {
+            // Error silently ignored or logged to sentry in future
         } finally {
             setToggling(false);
         }
@@ -56,7 +57,7 @@ export function NicheCard({ niche, initialIsFavorite = false }: NicheCardProps) 
             } else {
                 alert(result.error || "Error al generar la campaña");
             }
-        } catch (error) {
+        } catch {
             alert("Ocurrió un error inesperado");
         } finally {
             setGenerating(false);
@@ -122,7 +123,7 @@ export function NicheCard({ niche, initialIsFavorite = false }: NicheCardProps) 
                     </div>
                 </div>
                 <p className="text-sm text-balance text-muted-foreground italic">
-                    "{niche.explanation}"
+                    &quot;{niche.explanation}&quot;
                 </p>
             </CardContent>
             <CardFooter className="bg-muted/30 pt-4 flex flex-col gap-2 mt-auto">

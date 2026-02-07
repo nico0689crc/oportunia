@@ -1,54 +1,75 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Key, Globe, Save, RefreshCw, CheckCircle2, XCircle, BrainCircuit } from "lucide-react";
+import { Key, Globe, Save, RefreshCw, CheckCircle2, BrainCircuit } from "lucide-react";
 import { saveAppSettingsAction, getAppSettingsAction } from "@/actions/admin";
 import { useSearchParams } from "next/navigation";
 
+interface MLConfig {
+    clientId: string;
+    clientSecret: string;
+    siteId: string;
+}
+
+interface MLAuthStatus {
+    access_token: string;
+    expires_at: string;
+    refresh_token?: string;
+    ml_user_id?: string;
+}
+
 export default function AdminSettingsForm() {
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [config, setConfig] = useState({
+    const [config, setConfig] = useState<MLConfig>({
         clientId: "",
         clientSecret: "",
         siteId: "MLA"
     });
-    const [authStatus, setAuthStatus] = useState<any>(null);
+    const [authStatus, setAuthStatus] = useState<MLAuthStatus | null>(null);
     const searchParams = useSearchParams();
+
+    const loadSettings = useCallback(async () => {
+        setLoading(true);
+        try {
+            const savedConfig = await getAppSettingsAction<MLConfig>('ml_config');
+            const savedAuth = await getAppSettingsAction<MLAuthStatus>('ml_auth_tokens');
+
+            if (savedConfig) setConfig(savedConfig);
+            if (savedAuth) setAuthStatus(savedAuth);
+        } catch (error) {
+            console.error("Failed to load settings:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
         loadSettings();
-    }, []);
-
-    const loadSettings = async () => {
-        setLoading(true);
-        const savedConfig = await getAppSettingsAction<any>('ml_config');
-        const savedAuth = await getAppSettingsAction<any>('ml_auth_tokens');
-
-        if (savedConfig) setConfig(savedConfig);
-        if (savedAuth) setAuthStatus(savedAuth);
-        setLoading(false);
-    };
+    }, [loadSettings]);
 
     const handleSave = async () => {
         setSaving(true);
-        const result = await saveAppSettingsAction('ml_config', config);
-        if (result.success) {
-            // alert("Configuración guardada");
+        try {
+            const result = await saveAppSettingsAction('ml_config', config);
+            if (result.success) {
+                // Éxito
+            }
+        } finally {
+            setSaving(false);
         }
-        setSaving(false);
     };
 
     const handleConnect = () => {
         const clientId = config.clientId;
         const redirectUri = encodeURIComponent(window.location.origin + "/api/auth/ml/callback");
-        const url = `https://auth.mercadolibre.com.ar/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}`;
-        window.location.href = url;
+        const authUrl = `https://auth.mercadolibre.com.ar/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}`;
+        window.location.href = authUrl;
     };
 
     if (loading) return (

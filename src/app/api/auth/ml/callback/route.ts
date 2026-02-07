@@ -16,7 +16,6 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        // En un entorno real, estos vendrían de la DB o .env inicial
         const clientId = process.env.ML_CLIENT_ID;
         const clientSecret = process.env.ML_CLIENT_SECRET;
         const redirectUri = process.env.ML_REDIRECT_URI;
@@ -31,7 +30,6 @@ export async function GET(request: NextRequest) {
 
         const tokens = response.data;
 
-        // Guardar tokens globalmente en app_settings
         await saveAppSettingsAction('ml_auth_tokens', {
             access_token: tokens.access_token,
             refresh_token: tokens.refresh_token,
@@ -40,8 +38,9 @@ export async function GET(request: NextRequest) {
         });
 
         return NextResponse.redirect(new URL('/admin/settings?success=connected', request.url));
-    } catch (err: any) {
-        console.error('Error in ML Auth Callback:', err.response?.data || err.message);
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Error desconocido';
+        console.error('Error in ML Auth Callback:', message);
         return NextResponse.redirect(new URL(`/admin/settings?error=auth_failed`, request.url));
     }
 }

@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { isAdmin } from "@/lib/auth/roles";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/app-sidebar"; // Podemos crear una específica luego

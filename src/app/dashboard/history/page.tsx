@@ -1,6 +1,6 @@
 import { getSearchHistoryAction } from "@/actions/history";
 import { History, Search, ArrowRight, Clock } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
