@@ -13,9 +13,10 @@ import {
     SidebarMenuItem,
     SidebarFooter,
 } from "@/components/ui/sidebar";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ShieldAlert } from "lucide-react";
 
 const items = [
     {
@@ -40,6 +41,19 @@ const items = [
     },
 ];
 
+const adminItems = [
+    {
+        title: "Admin Panel",
+        url: "/admin",
+        icon: ShieldAlert,
+    },
+    {
+        title: "Configuración ML",
+        url: "/admin/settings",
+        icon: Settings,
+    },
+];
+
 const secondaryItems = [
     {
         title: "Configuración",
@@ -55,6 +69,8 @@ const secondaryItems = [
 
 export function AppSidebar() {
     const pathname = usePathname();
+    const { user } = useUser();
+    const isAdmin = user?.publicMetadata?.role === 'admin';
 
     return (
         <Sidebar collapsible="icon">
@@ -83,6 +99,26 @@ export function AppSidebar() {
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
+
+                {isAdmin && (
+                    <SidebarGroup>
+                        <SidebarGroupLabel className="text-primary font-bold">Administración</SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                {adminItems.map((item) => (
+                                    <SidebarMenuItem key={item.title}>
+                                        <SidebarMenuButton asChild isActive={pathname === item.url}>
+                                            <Link href={item.url}>
+                                                <item.icon className="text-primary" />
+                                                <span className="font-semibold">{item.title}</span>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                )}
 
                 <SidebarGroup className="mt-auto">
                     <SidebarGroupLabel>Sistema</SidebarGroupLabel>
