@@ -1,36 +1,211 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Oportunia - MVP SaaS para Vendedores de Mercado Libre
 
-## Getting Started
+> Herramienta de descubrimiento de nichos y generación de campañas optimizadas con IA para vendedores de Mercado Libre.
 
-First, run the development server:
+[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green)](https://supabase.com/)
+[![Clerk](https://img.shields.io/badge/Clerk-Auth-purple)](https://clerk.com/)
+
+---
+
+## 🚀 Quick Start
 
 ```bash
+# 1. Instalar dependencias
+npm install
+
+# 2. Configurar variables de entorno
+cp .env.example .env.local
+# Editar .env.local con tus credenciales
+
+# 3. Iniciar desarrollo
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📚 Documentación
 
-## Learn More
+- **Setup Inicial**: [`docs/setup/`](docs/setup/)
+  - [Configurar Clerk](docs/setup/01-clerk.md)
+  - [Configurar Supabase](docs/setup/02-supabase-professional.md)
+  
+- **Desarrollo**: [`docs/development/`](docs/development/)
+  - [Comandos de Supabase](docs/development/supabase-commands.md)
+  
+- **Arquitectura**: [`docs/architecture/`](docs/architecture/)
+  - [Roadmap de Implementación](docs/architecture/roadmap.md)
+  - [Estructura del Proyecto](docs/PROJECT_STRUCTURE.md)
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🛠️ Stack Tecnológico
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Categoría | Tecnología |
+|-----------|-----------|
+| **Framework** | Next.js 16 (App Router) |
+| **Lenguaje** | TypeScript 5 |
+| **Autenticación** | Clerk |
+| **Base de Datos** | Supabase (PostgreSQL) |
+| **UI** | Shadcn/ui + Tailwind CSS |
+| **API Externa** | Mercado Libre API |
+| **IA** | OpenAI (próximamente) |
+| **Billing** | Stripe (próximamente) |
+| **Deploy** | Vercel |
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## ✨ Funcionalidades
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### ✅ Implementadas
+
+- [x] Autenticación completa con Clerk
+- [x] Buscador de Nichos con algoritmo de scoring mejorado
+- [x] Dashboard con UI premium (Sidebar, Header)
+- [x] Persistencia en Supabase con migraciones versionadas
+- [x] Landing page profesional
+- [x] CI/CD con GitHub Actions
+
+### 🚧 En Desarrollo
+
+- [ ] Generador de Campañas con IA (OpenAI)
+- [ ] Sistema de Favoritos
+- [ ] Analizador de Productos
+- [ ] Billing con Stripe
+- [ ] Selector visual de categorías
+
+---
+
+## 📦 Scripts Disponibles
+
+```bash
+# Desarrollo
+npm run dev          # Iniciar servidor de desarrollo
+npm run build        # Build de producción
+npm run start        # Iniciar servidor de producción
+npm run lint         # Ejecutar linter
+
+# Base de Datos (Supabase)
+npm run db:start     # Iniciar Supabase local (Docker)
+npm run db:stop      # Detener Supabase local
+npm run db:push      # Aplicar migraciones a remoto
+npm run db:pull      # Traer schema desde remoto
+npm run db:reset     # Resetear DB local
+npm run db:status    # Ver estado de Supabase
+```
+
+---
+
+## 🗂️ Estructura del Proyecto
+
+```
+04-mvp-saas/
+├── docs/              # Documentación
+├── src/               # Código fuente
+│   ├── actions/      # Server Actions
+│   ├── app/          # Pages (App Router)
+│   ├── components/   # Componentes React
+│   ├── lib/          # Utilidades y clientes
+│   └── types/        # TypeScript types
+├── supabase/         # Migraciones y config
+└── .github/          # CI/CD workflows
+```
+
+Ver [estructura completa](docs/PROJECT_STRUCTURE.md).
+
+---
+
+## 🔧 Configuración
+
+### Requisitos Previos
+
+- Node.js 20+
+- npm o yarn
+- Cuenta en [Clerk](https://clerk.com)
+- Cuenta en [Supabase](https://supabase.com)
+- (Opcional) Docker para desarrollo local de Supabase
+
+### Variables de Entorno
+
+Copia `.env.example` a `.env.local` y configura:
+
+```env
+# Clerk (Autenticación)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+
+# Supabase (Base de Datos)
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJh...
+
+# Mercado Libre API
+ML_CLIENT_ID=123456789
+ML_CLIENT_SECRET=abcd1234...
+ML_SITE_ID=MLA
+```
+
+Ver guías detalladas en [`docs/setup/`](docs/setup/).
+
+---
+
+## 🧪 Testing
+
+```bash
+# Ejecutar tests (próximamente)
+npm test
+
+# Tests E2E (próximamente)
+npm run test:e2e
+```
+
+---
+
+## 🚢 Deployment
+
+### Vercel (Recomendado)
+
+```bash
+# Instalar Vercel CLI
+npm i -g vercel
+
+# Deploy
+vercel
+```
+
+### Variables de Entorno en Vercel
+
+Configura las mismas variables de `.env.local` en:
+- Vercel Dashboard → Project Settings → Environment Variables
+
+---
+
+## 🤝 Contribuir
+
+Este es un proyecto privado en desarrollo. Para contribuir:
+
+1. Crea una rama feature: `git checkout -b feature/nueva-funcionalidad`
+2. Commit tus cambios: `git commit -m 'feat: agregar nueva funcionalidad'`
+3. Push a la rama: `git push origin feature/nueva-funcionalidad`
+4. Abre un Pull Request
+
+---
+
+## 📄 Licencia
+
+Privado - Todos los derechos reservados
+
+---
+
+## 📞 Soporte
+
+Para preguntas o problemas:
+- Revisa la [documentación](docs/)
+- Abre un issue en GitHub
+- Contacta al equipo de desarrollo
+
+---
+
+**Desarrollado con ❤️ para vendedores de Mercado Libre**
