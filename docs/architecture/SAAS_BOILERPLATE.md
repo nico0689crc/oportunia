@@ -98,8 +98,8 @@ El boilerplate utiliza un modelo de **Entitlements Centric**, donde el acceso no
 - **Chequeo en Cliente/Servidor**: Se utiliza `auth().has()` para una validación instantánea y tipada.
 
 ### 2. Sincronización de Suscripciones
-- **Clerk como Source of Truth**: El estado de la suscripción vive en Clerk.
-- **Supabase para Cache**: Los webhooks de Clerk actualizan la tabla `profiles` o `subscriptions` en Supabase solo para optimizar consultas de lectura pesada o filtros en el admin.
+- **Mercado Pago Webhook**: La función `mercadopago-webhook` recibe las notificaciones de pago.
+- **Supabase as Source of Truth**: A diferencia de Clerk Billing, aquí los planes viven en la tabla `subscriptions` de Supabase. El frontend debe consultar esta tabla para validar el acceso.
 
 ---
 **Este documento es la base para futuros proyectos SaaS. Mantenerlo actualizado con cada nueva mejora estructural.**
