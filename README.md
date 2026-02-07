@@ -37,6 +37,7 @@ Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
   - [Comandos de Supabase](docs/development/supabase-commands.md)
   
 - **Arquitectura**: [`docs/architecture/`](docs/architecture/)
+  - [**Guía SaaS Boilerplate (Stack & Patterns)**](docs/architecture/SAAS_BOILERPLATE.md)
   - [Roadmap de Implementación](docs/architecture/roadmap.md)
   - [Estructura del Proyecto](docs/PROJECT_STRUCTURE.md)
 

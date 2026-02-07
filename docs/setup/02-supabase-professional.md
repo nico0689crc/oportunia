@@ -116,43 +116,24 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxxxxxxxxxxxxxxxxxx...
 
 ## Paso 7: Configurar GitHub Actions (CI/CD)
 
-Crea `.github/workflows/supabase-migrations.yml`:
+Utilizamos un archivo de pipeline unificado en `.github/workflows/pipeline.yml` que maneja tanto el build de la app como la validación de la base de datos.
 
-```yaml
-name: Supabase Migrations
+### Qué hace el Pipeline:
+1. **Linting de SQL**: Valida que tus migraciones no tengan errores de sintaxis.
+2. **Setup Local**: Levanta una instancia de Supabase en el runner (`supabase start`) para poder validar el schema contra una base de datos real.
+3. **Deploy**: Empuja las migraciones a Staging/Producción automáticamente al hacer push a las ramas correspondientes.
 
-on:
-  push:
-    branches: [main]
-    paths:
-      - 'supabase/migrations/**'
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-      
-      - name: Run migrations
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: |
-          supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
-          supabase db push
-```
-
-**Configurar Secrets en GitHub**:
+### Configurar Secrets en GitHub:
 1. GitHub Repo → Settings → Secrets and variables → Actions
 2. Agregar:
    - `SUPABASE_ACCESS_TOKEN` (de Supabase Dashboard → Account → Access Tokens)
-   - `SUPABASE_PROJECT_ID` (tu project ID)
-   - `SUPABASE_DB_PASSWORD` (contraseña de la DB)
+   - `SUPABASE_STAGING_PROJECT_ID` (project ID de pruebas)
+   - `SUPABASE_STAGING_DB_PASSWORD` (password de la DB de pruebas)
+   - `SUPABASE_PRODUCTION_PROJECT_ID` (project ID de producción)
+   - `SUPABASE_PRODUCTION_DB_PASSWORD` (password de la DB de producción)
+
+> [!TIP]
+> Puedes ver el detalle del workflow en el archivo [.github/workflows/pipeline.yml](../../.github/workflows/pipeline.yml).
 
 ---
 
