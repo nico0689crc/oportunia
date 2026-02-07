@@ -1,6 +1,7 @@
 import DashboardLayout from "@/components/dashboard/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, TrendingUp, FileText, Users } from "lucide-react";
+import { SubscriptionStatus } from "@/components/subscriptions/subscription-status";
 
 export default function DashboardPage() {
     const stats = [
@@ -39,29 +40,32 @@ export default function DashboardPage() {
                             <CardDescription>Nichos detectados recientemente.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="h-[200px] flex items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg">
+                            <div className="h-[400px] flex items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg">
                                 Próximamente: Lista de búsquedas recientes
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="col-span-3">
-                        <CardHeader>
-                            <CardTitle>Pro Tips</CardTitle>
-                            <CardDescription>Mejora tus ventas con IA.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ul className="space-y-4 text-sm">
-                                <li className="flex gap-2">
-                                    <div className="h-2 w-2 rounded-full bg-primary mt-1.5" />
-                                    <p>Optimizamos títulos usando palabras clave de alta conversión.</p>
-                                </li>
-                                <li className="flex gap-2">
-                                    <div className="h-2 w-2 rounded-full bg-primary mt-1.5" />
-                                    <p>Analiza a tu competencia para encontrar gaps de mercado.</p>
-                                </li>
-                            </ul>
-                        </CardContent>
-                    </Card>
+                    <div className="col-span-3 flex flex-col gap-4">
+                        <SubscriptionStatus />
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Pro Tips</CardTitle>
+                                <CardDescription>Mejora tus ventas con IA.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <ul className="space-y-4 text-sm">
+                                    <li className="flex gap-2">
+                                        <div className="h-2 w-2 rounded-full bg-primary mt-1.5" />
+                                        <p>Optimizamos títulos usando palabras clave de alta conversión.</p>
+                                    </li>
+                                    <li className="flex gap-2">
+                                        <div className="h-2 w-2 rounded-full bg-primary mt-1.5" />
+                                        <p>Analiza a tu competencia para encontrar gaps de mercado.</p>
+                                    </li>
+                                </ul>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
             </div>
         </DashboardLayout>

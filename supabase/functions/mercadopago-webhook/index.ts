@@ -16,35 +16,66 @@ serve(async (req) => {
         console.log(`Recibido webhook de MP: tipo=${type}, id=${id}`)
 
         if (type === 'payment' && id) {
-            // 1. Consultar el pago en la API de Mercado Pago
-            const response = await fetch(`https://api.mercadopago.com/v1/payments/${id}`, {
+            // (Lógica existente para pagos únicos - opcional mantenerla)
+            const resp = await fetch(`https://api.mercadopago.com/v1/payments/${id}`, {
+                headers: { Authorization: `Bearer ${mpAccessToken}` }
+            })
+            if (resp.ok) {
+                const pd = await resp.json()
+                if (pd.status === 'approved') {
+                    await supabase.from('subscriptions').upsert({
+                        user_id: pd.external_reference,
+                        tier: pd.metadata?.plan_tier || 'pro',
+                        status: 'active'
+                    })
+                }
+            }
+        }
+
+        if (type === 'preapproval' && id) {
+            // 1. Consultar la suscripción (Pre-approval)
+            const response = await fetch(`https://api.mercadopago.com/v1/preapproval/${id}`, {
                 headers: {
                     Authorization: `Bearer ${mpAccessToken}`,
                 },
             })
 
-            if (!response.ok) throw new Error('Error consultando pago en MP')
+            if (!response.ok) throw new Error('Error consultando suscripción en MP')
 
-            const paymentData = await response.json()
+            const subData = await response.json()
 
-            // 2. Si el pago está aprobado, actualizar la suscripción
-            if (paymentData.status === 'approved') {
-                const userId = paymentData.external_reference // Asumimos que mandamos el Clerk ID aquí
-                const planTier = paymentData.metadata?.plan_tier || 'pro' // O sacarlo del item/metadata
+            // 2. Mapear estado de MP a nuestro sistema
+            // authorized -> active
+            // paused -> past_due
+            // cancelled -> cancelled
+            const statusMap: Record<string, string> = {
+                authorized: 'active',
+                paused: 'past_due',
+                cancelled: 'canceled'
+            }
 
+            const userId = subData.external_reference
+            const status = statusMap[subData.status] || 'inactive'
+
+            // Intentar deducir el tier por el monto o razón si no viene en metadata
+            let tier = 'pro'
+            if (subData.reason.toLowerCase().includes('elite')) tier = 'elite'
+
+            if (userId) {
                 const { error } = await supabase
                     .from('subscriptions')
                     .upsert({
                         user_id: userId,
-                        tier: planTier,
-                        status: 'active',
+                        tier: tier,
+                        status: status,
                         mp_subscription_id: id
                     })
 
                 if (error) throw error
-                console.log(`Suscripción actualizada para usuario ${userId}: ${planTier}`)
+                console.log(`Suscripción recurrente actualizada para ${userId}: ${status} (${tier})`)
             }
         }
+
 
         return new Response(JSON.stringify({ received: true }), {
             headers: { 'Content-Type': 'application/json' },

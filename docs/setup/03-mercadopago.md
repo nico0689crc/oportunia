@@ -18,34 +18,25 @@ supabase secrets set MP_ACCESS_TOKEN=tu_access_token
 2. Configura la URL: `https://<tu-proyecto>.supabase.co/functions/v1/mercadopago-webhook`
 3. Selecciona el evento: **Pagos** (`payments`).
 
-## 4. Implementación del Checkout
-Al crear la preferencia en tu Frontend (Next.js), asegúrate de enviar el `external_reference`:
+## 4. Implementación de Suscripciones (Pre-approvals)
+Al crear la suscripción en tu Frontend, usamos `PreApproval` para cobros automáticos:
 
 ```typescript
-// Ejemplo en una Server Action
-const preference = await new Preference(client).create({
+// En lib/actions/mercadopago.ts
+const result = await preapproval.create({
   body: {
-    items: [ ... ],
-    external_reference: userId, // Tu Clerk ID
-    metadata: {
-      plan_tier: 'pro'
+    reason: "Oportunia - Plan Pro",
+    auto_recurring: {
+      frequency: 1,
+      frequency_type: 'months',
+      transaction_amount: 15000,
+      currency_id: 'ARS',
     },
-    notification_url: "https://<tu-proyecto>.supabase.co/functions/v1/mercadopago-webhook"
+    // ...
   }
 });
 ```
 
-## 5. Control de Acceso
-Como Mercado Pago es manual, usamos la tabla `subscriptions` de Supabase:
-
-```typescript
-const { data: sub } = await supabase
-  .from('subscriptions')
-  .select('tier')
-  .eq('user_id', userId)
-  .single();
-
-if (sub?.tier === 'pro' || sub?.tier === 'elite') {
-  // Acceso permitido
-}
-```
+## 5. Gestión de Suscripciones
+Para que los usuarios cancelen o vean su estado, el Boilerplate incluye el componente `SubscriptionStatus` que enlaza al portal de suscripciones de Mercado Pago.
+URL de gestión: `https://www.mercadopago.com.ar/subscriptions`

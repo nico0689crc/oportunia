@@ -65,18 +65,18 @@ const plans = [
 export default function PricingPage() {
     const [loading, setLoading] = useState<string | null>(null);
 
-    const handleSubscribe = async (plan: typeof plans[0]) => {
+    const handleSubscribe = async (plan: Plan) => {
         if (plan.tier === 'free') return;
 
         setLoading(plan.id);
         try {
-            const { url } = await createCheckoutPreference(plan);
+            const { url } = await createSubscriptionPreference(plan);
             if (url) {
                 window.location.href = url;
             }
         } catch (error) {
             console.error(error);
-            alert('Hubo un error al iniciar el pago. Intenta de nuevo.');
+            alert('Hubo un error al iniciar el proceso de suscripción.');
         } finally {
             setLoading(null);
         }

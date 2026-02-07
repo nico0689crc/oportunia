@@ -1,14 +1,13 @@
 'use server';
 
-import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { MercadoPagoConfig, PreApproval } from 'mercadopago';
 import { auth } from '@clerk/nextjs/server';
 
 const client = new MercadoPagoConfig({
     accessToken: process.env.MP_ACCESS_TOKEN!,
 });
 
-export async function createCheckoutPreference(plan: {
-    id: string;
+export async function createSubscriptionPreference(plan: {
     name: string;
     price: number;
     tier: string;
@@ -19,38 +18,29 @@ export async function createCheckoutPreference(plan: {
         throw new Error('No estás autenticado');
     }
 
-    const preference = new Preference(client);
+    const preapproval = new PreApproval(client);
 
     try {
-        const result = await preference.create({
+        const result = await preapproval.create({
             body: {
-                items: [
-                    {
-                        id: plan.id,
-                        title: `Oportunia - Plan ${plan.name}`,
-                        quantity: 1,
-                        unit_price: plan.price,
-                        currency_id: 'ARS',
-                    },
-                ],
+                reason: `Oportunia - Plan ${plan.name}`,
+                auto_recurring: {
+                    frequency: 1,
+                    frequency_type: 'months',
+                    transaction_amount: plan.price,
+                    currency_id: 'ARS',
+                },
+                back_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?subscription=success`,
                 external_reference: userId,
-                metadata: {
-                    plan_tier: plan.tier,
-                    user_id: userId,
-                },
-                back_urls: {
-                    success: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?payment=success`,
-                    failure: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/pricing?payment=failure`,
-                    pending: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/pricing?payment=pending`,
-                },
-                auto_return: 'approved',
-                notification_url: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/mercadopago-webhook`,
+                payer_email: 'test_user_123@test.com', // En prod sacar de Clerk
+                card_token_id: '', // Se llena en el checkout de MP
+                status: 'pending',
             },
         });
 
         return { url: result.init_point };
     } catch (error) {
-        console.error('Error creando preferencia MP:', error);
-        throw new Error('Error al iniciar el pago');
+        console.error('Error creando suscripción MP:', error);
+        throw new Error('Error al iniciar el proceso de suscripción');
     }
 }
