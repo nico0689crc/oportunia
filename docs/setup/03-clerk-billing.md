@@ -7,17 +7,21 @@ Esta guía detalla cómo configurar los planes y características en el Dashboar
 2. Selecciona el **Stripe development gateway** para pruebas.
 
 ## 2. Definir Características (Features)
-Antes de crear los planes, define las "Features" que controlarán el acceso en el código.
+En la sección **Billing → Features**, crea los slugs para cada funcionalidad. 
 
-| Feature Name | Key (Código) | Tipo | Descripción |
-|--------------|--------------|------|-------------|
-| Búsqueda de Nichos | `niche_search` | Límite | Cantidad de búsquedas permitidas. |
-| Análisis con IA | `ai_analysis` | Límite | Análisis de productos ganadores. |
-| Campañas con IA | `ai_campaigns` | Límite | Generación de títulos/descripciones. |
-| Monitoreo de Productos | `product_monitor` | Límite | Productos en tracking activo. |
-| Alertas Real-time | `realtime_alerts` | Booleano | Acceso a alertas instantáneas. |
+> [!NOTE]
+> En este paso **no** verás opciones de "Límite" o "Booleano". Solo creas el nombre/identificador. Los límites se definen después, al editar cada Plan.
 
-## 3. Configurar Planes
+| Feature Name | Key (Código) | Uso Sugerido |
+|--------------|--------------|-------------|
+| Búsqueda de Nichos | `niche_search` | Para limitar búsquedas. |
+| Análisis con IA | `ai_analysis` | Para limitar análisis. |
+| Campañas con IA | `ai_campaigns` | Para limitar generaciones. |
+| Monitoreo de Productos | `product_monitor` | Para limitar tracking. |
+| Alertas Real-time | `realtime_alerts` | Como acceso Sí/No. |
+
+## 3. Configurar Planes e Inyectar Valores
+Ahora ve a **Billing → Plans**. Al crear o editar un Plan, añade las "Features" anteriores y ahí es donde definirás los **Valores**:
 
 ### **Plan 1: Cazador (Gratis)**
 - **Precio**: $0
