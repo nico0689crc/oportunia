@@ -19,7 +19,7 @@ export async function searchNichesAction(categoryId: string, categoryName?: stri
         if (!userId) throw new Error('No estás autenticado');
 
         // Verificar y descontar uso del plan
-        const { allowed, remaining } = await checkAndIncrementUsage(userId, 'niche_search');
+        const { allowed } = await checkAndIncrementUsage(userId, 'niche_search');
         if (!allowed) {
             return {
                 success: false,
