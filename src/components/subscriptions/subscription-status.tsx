@@ -1,27 +1,19 @@
 import { auth } from '@clerk/nextjs/server';
-import { getUserTier } from '@/lib/subscriptions';
-import { createClient } from '@supabase/supabase-js';
+import { getSubscriptionData } from '@/lib/subscriptions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CreditCard, ExternalLink } from 'lucide-react';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+import { UsageMeter } from './usage-meter';
+import { Suspense } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export async function SubscriptionStatus() {
     const { userId } = await auth();
     if (!userId) return null;
 
-    const tier = await getUserTier(userId);
-
-    // Buscar info extendida en la DB
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    const { data: sub } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
+    const sub = await getSubscriptionData(userId);
+    const tier = sub.tier;
 
     const tierColors: Record<string, string> = {
         free: 'bg-slate-500',
@@ -41,7 +33,7 @@ export async function SubscriptionStatus() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-6">
                     <div className="space-y-1">
                         <p className="text-sm font-medium leading-none">Plan Actual</p>
                         <p className="text-sm text-muted-foreground capitalize">{tier}</p>
@@ -49,7 +41,11 @@ export async function SubscriptionStatus() {
                     <Badge className={tierColors[tier]}>{tier.toUpperCase()}</Badge>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-6">
+                    <Suspense fallback={<Skeleton className="h-10 w-full" />}>
+                        <UsageMeter />
+                    </Suspense>
+
                     <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
                         {tier === 'free' ? (
                             "Estás en el plan gratuito. Mejora para desbloquear más búsquedas y análisis con IA."

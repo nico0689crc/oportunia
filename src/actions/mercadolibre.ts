@@ -4,6 +4,7 @@ import { getDynamicMlClient } from '@/lib/mercadolibre/dynamic-client';
 import { NichesProcessorImproved, NicheResult } from '@/lib/mercadolibre/niches-improved';
 import { auth } from '@clerk/nextjs/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { checkAndIncrementUsage } from '@/lib/subscriptions';
 
 /**
  * Acción para buscar nichos en una categoría
@@ -15,6 +16,17 @@ export async function searchNichesAction(categoryId: string, categoryName?: stri
 }> {
     try {
         const { userId } = await auth();
+        if (!userId) throw new Error('No estás autenticado');
+
+        // Verificar y descontar uso del plan
+        const { allowed, remaining } = await checkAndIncrementUsage(userId, 'niche_search');
+        if (!allowed) {
+            return {
+                success: false,
+                error: 'Has alcanzado el límite de búsquedas de tu plan. ¡Actualiza para seguir explorando!'
+            };
+        }
+
         const client = await getDynamicMlClient();
 
         const response = await client.getHighlightsByCategory(categoryId);
