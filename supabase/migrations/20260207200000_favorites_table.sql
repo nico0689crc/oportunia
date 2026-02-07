@@ -1,6 +1,6 @@
 -- Crear tabla de favoritos
 CREATE TABLE IF NOT EXISTS favorites (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id TEXT NOT NULL,
     niche_id TEXT NOT NULL,
     niche_data JSONB NOT NULL,

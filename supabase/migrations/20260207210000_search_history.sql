@@ -1,6 +1,6 @@
 -- Crear tabla de historial de búsquedas
 CREATE TABLE IF NOT EXISTS search_history (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id TEXT NOT NULL,
     category_id TEXT NOT NULL,
     category_name TEXT NOT NULL,

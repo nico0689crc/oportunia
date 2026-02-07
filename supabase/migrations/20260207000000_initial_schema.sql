@@ -1,16 +1,9 @@
 -- ============================================
--- OPORTUNIA - SUPABASE SCHEMA
--- ============================================
-
--- Habilitar extensión UUID
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- ============================================
 -- TABLA: searches
 -- Almacena el historial de búsquedas de nichos
 -- ============================================
 CREATE TABLE IF NOT EXISTS searches (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id TEXT NOT NULL,
   category_id TEXT NOT NULL,
   results JSONB,
@@ -26,7 +19,7 @@ CREATE INDEX IF NOT EXISTS idx_searches_created_at ON searches(created_at DESC);
 -- Almacena los nichos que el usuario guardó como favoritos
 -- ============================================
 CREATE TABLE IF NOT EXISTS favorite_niches (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id TEXT NOT NULL,
   niche_name TEXT NOT NULL,
   score INT,
@@ -44,7 +37,7 @@ CREATE INDEX IF NOT EXISTS idx_favorites_score ON favorite_niches(score DESC);
 -- Almacena tokens de Mercado Libre por usuario
 -- ============================================
 CREATE TABLE IF NOT EXISTS ml_tokens (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id TEXT NOT NULL UNIQUE,
   access_token TEXT NOT NULL,
   refresh_token TEXT,
@@ -63,7 +56,7 @@ CREATE INDEX IF NOT EXISTS idx_ml_tokens_user_id ON ml_tokens(user_id);
 -- Almacena campañas generadas con IA
 -- ============================================
 CREATE TABLE IF NOT EXISTS generated_campaigns (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id TEXT NOT NULL,
   niche_name TEXT,
   titles TEXT[],
