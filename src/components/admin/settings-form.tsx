@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Key, Globe, Save, RefreshCw, CheckCircle2, BrainCircuit } from "lucide-react";
-import { saveAppSettingsAction, getAppSettingsAction } from "@/actions/admin";
+import { saveAppSettingsAction, getAppSettingsAction, getMlAuthUrlAction } from "@/actions/admin";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
@@ -81,12 +81,14 @@ export default function AdminSettingsForm() {
         }
     };
 
-    const handleConnect = () => {
-        const clientId = config.clientId;
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-        const redirectUri = encodeURIComponent(`${baseUrl}/api/auth/ml/callback`);
-        const authUrl = `https://auth.mercadolibre.com.ar/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}`;
-        window.location.href = authUrl;
+    const handleConnect = async () => {
+        try {
+            const authUrl = await getMlAuthUrlAction();
+            window.location.href = authUrl;
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Error al generar URL de conexión';
+            toast.error(message);
+        }
     };
 
     if (loading) return (

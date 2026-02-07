@@ -4,6 +4,8 @@ import { isAdmin } from '@/lib/auth/roles';
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { encrypt } from '@/lib/encryption';
+import { cookies } from 'next/headers';
+import { MlAuth } from '@/lib/mercadolibre/auth';
 
 interface MLConfig {
     clientId: string;
@@ -84,4 +86,44 @@ export async function getAppSettingsAction<T>(key: string): Promise<T | null> {
 
     if (!data) return null;
     return data.value as T;
+}
+
+/**
+ * Genera la URL de autorización de Mercado Libre con PKCE
+ */
+export async function getMlAuthUrlAction() {
+    if (!await isAdmin()) {
+        throw new Error('No autorizado');
+    }
+
+    const config = await getAppSettingsAction<MLConfig>('ml_config');
+    if (!config || !config.clientId) {
+        throw new Error('ML_CONFIG_MISSING: Por favor configura el Client ID primero.');
+    }
+
+    const verifier = MlAuth.generateCodeVerifier();
+    const challenge = MlAuth.generateCodeChallenge(verifier);
+    const state = MlAuth.generateState();
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const redirectUri = `${baseUrl}/api/auth/ml/callback`;
+
+    // Guardar verifier y state en cookies seguras
+    const cookieStore = await cookies();
+
+    cookieStore.set('ml_code_verifier', verifier, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 600 // 10 minutos
+    });
+
+    cookieStore.set('ml_auth_state', state, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 600
+    });
+
+    return MlAuth.getAuthorizationUrl(config.clientId, redirectUri, challenge, state);
 }

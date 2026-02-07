@@ -14,6 +14,13 @@ export class MlAuth {
     }
 
     /**
+     * Genera un estado aleatorio para prevenir CSRF
+     */
+    static generateState(): string {
+        return crypto.randomBytes(16).toString('hex');
+    }
+
+    /**
      * Genera un code_challenge a partir del code_verifier
      */
     static generateCodeChallenge(verifier: string): string {

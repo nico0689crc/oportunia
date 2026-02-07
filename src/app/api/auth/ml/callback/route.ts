@@ -10,10 +10,21 @@ interface MLConfig {
     siteId: string;
 }
 
+import { cookies } from 'next/headers';
+
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
+    const state = searchParams.get('state');
     const error = searchParams.get('error');
+
+    const cookieStore = await cookies();
+    const storedVerifier = cookieStore.get('ml_code_verifier')?.value;
+    const storedState = cookieStore.get('ml_auth_state')?.value;
+
+    // Clean up cookies immediately
+    cookieStore.delete('ml_code_verifier');
+    cookieStore.delete('ml_auth_state');
 
     if (error) {
         return NextResponse.redirect(new URL(`/admin/settings?error=${error}`, request.url));
@@ -21,6 +32,12 @@ export async function GET(request: NextRequest) {
 
     if (!code) {
         return NextResponse.redirect(new URL('/admin/settings?error=no_code', request.url));
+    }
+
+    // Validate state to prevent CSRF
+    if (!state || state !== storedState) {
+        console.error('ML Auth Callback: Invalid state or state mismatch');
+        return NextResponse.redirect(new URL('/admin/settings?error=invalid_state', request.url));
     }
 
     try {
@@ -37,7 +54,7 @@ export async function GET(request: NextRequest) {
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
         const redirectUri = `${baseUrl}/api/auth/ml/callback`;
 
-        console.log('Exchanging ML code for tokens...', { clientId, redirectUri });
+        console.log('Exchanging ML code for tokens with PKCE...', { clientId, redirectUri, hasVerifier: !!storedVerifier });
 
         const params = new URLSearchParams({
             grant_type: 'authorization_code',
@@ -47,6 +64,11 @@ export async function GET(request: NextRequest) {
             redirect_uri: redirectUri,
         });
 
+        // Add code_verifier if we have it
+        if (storedVerifier) {
+            params.append('code_verifier', storedVerifier);
+        }
+
         const response = await axios.post('https://api.mercadolibre.com/oauth/token', params.toString(), {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
@@ -55,12 +77,9 @@ export async function GET(request: NextRequest) {
         console.log('ML Tokens received successfully:', {
             user_id: tokens.user_id,
             has_access: !!tokens.access_token,
-            has_refresh: !!tokens.refresh_token,
-            expires_in: tokens.expires_in
         });
 
-        console.log('Attempting DB upsert for ml_auth_tokens...');
-        const { data: upsertData, error: saveError } = await supabaseAdmin
+        const { error: saveError } = await supabaseAdmin
             .from('app_settings')
             .upsert({
                 key: 'ml_auth_tokens',
@@ -79,7 +98,6 @@ export async function GET(request: NextRequest) {
             return NextResponse.redirect(new URL(`/admin/settings?error=db_save_failed&msg=${encodeURIComponent(saveError.message)}`, request.url));
         }
 
-        console.log('DB Upsert SUCCESS. Row count:', upsertData?.length);
         return NextResponse.redirect(new URL('/admin/settings?success=connected', request.url));
     } catch (err: unknown) {
         let message = 'Error desconocido';
