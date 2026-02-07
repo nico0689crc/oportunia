@@ -89,5 +89,17 @@ Para evitar subir código roto, el boilerplate utiliza **Husky** y **lint-staged
 - **Pre-commit**: Ejecuta `eslint` solo en los archivos modificados. Si hay errores, el commit se bloquea.
 - **Pre-push**: Ejecuta `lint`, `typecheck` y `build` completos. Garantiza que nada rompa el pipeline de CI.
 
+## 💰 Arquitectura de Precios & Entitlements
+
+El boilerplate utiliza un modelo de **Entitlements Centric**, donde el acceso no se basa en el nombre del plan, sino en las características individuales (Features).
+
+### 1. Control de Acceso (RBAC + Features)
+- **Granularidad**: Usamos las "Features" de Clerk para definir límites y permisos.
+- **Chequeo en Cliente/Servidor**: Se utiliza `auth().has()` para una validación instantánea y tipada.
+
+### 2. Sincronización de Suscripciones
+- **Clerk como Source of Truth**: El estado de la suscripción vive en Clerk.
+- **Supabase para Cache**: Los webhooks de Clerk actualizan la tabla `profiles` o `subscriptions` en Supabase solo para optimizar consultas de lectura pesada o filtros en el admin.
+
 ---
 **Este documento es la base para futuros proyectos SaaS. Mantenerlo actualizado con cada nueva mejora estructural.**
