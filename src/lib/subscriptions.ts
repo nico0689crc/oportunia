@@ -1,8 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { Target, Zap, Shield, LucideIcon } from 'lucide-react';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; // Usar service role en server-side
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export type SubscriptionTier = 'free' | 'pro' | 'elite';
 
@@ -82,9 +79,7 @@ export interface SubscriptionData {
 }
 
 export async function getSubscriptionData(userId: string): Promise<SubscriptionData> {
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
         .from('subscriptions')
         .select('tier, usage_count, usage_reset_at, status')
         .eq('user_id', userId)
@@ -108,7 +103,6 @@ export async function getUserTier(userId: string): Promise<SubscriptionTier> {
 }
 
 export async function checkAndIncrementUsage(userId: string, feature: keyof typeof PLAN_LIMITS['free']): Promise<{ allowed: boolean; remaining: number }> {
-    const supabase = createClient(supabaseUrl, supabaseKey);
     const sub = await getSubscriptionData(userId);
 
     const limit = PLAN_LIMITS[sub.tier as keyof typeof PLAN_LIMITS][feature];
@@ -121,7 +115,7 @@ export async function checkAndIncrementUsage(userId: string, feature: keyof type
     }
 
     // Incrementar uso
-    await supabase
+    await supabaseAdmin
         .from('subscriptions')
         .update({ usage_count: sub.usage_count + 1 })
         .eq('user_id', userId);
