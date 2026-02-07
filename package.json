@@ -14,7 +14,8 @@
     "db:pull": "supabase db pull",
     "db:diff": "supabase db diff -f",
     "db:migration": "supabase migration new",
-    "db:status": "supabase status"
+    "db:status": "supabase status",
+    "vercel-check": "node scripts/vercel-check.js"
   },
   "dependencies": {
     "@clerk/localizations": "^3.35.3",

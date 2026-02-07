@@ -1,14 +1,8 @@
 'use server';
 
-import { createClient } from '@supabase/supabase-js';
 import { isAdmin } from '@/lib/auth/roles';
 import { revalidatePath } from 'next/cache';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SECRET_KEY!;
-
-// Usamos el cliente con service_role para operaciones de admin (bypass RLS)
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
 /**
  * Guarda una configuración global en la base de datos

@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, Search, FileText, Settings, HelpCircle, PackageSearch } from "lucide-react";
+import { LayoutDashboard, Search, FileText, Settings, HelpCircle, PackageSearch, Star, History } from "lucide-react";
 import {
     Sidebar,
     SidebarContent,
@@ -28,6 +28,16 @@ const items = [
         title: "Buscador de Nichos",
         url: "/dashboard/niches",
         icon: Search,
+    },
+    {
+        title: "Mis Favoritos",
+        url: "/dashboard/favorites",
+        icon: Star,
+    },
+    {
+        title: "Historial de Búsquedas",
+        url: "/dashboard/history",
+        icon: History,
     },
     {
         title: "Analizador",

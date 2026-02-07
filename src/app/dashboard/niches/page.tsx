@@ -4,24 +4,35 @@ import { useState } from "react";
 import DashboardLayout from "@/components/dashboard/dashboard-layout";
 import { NicheCard } from "@/components/dashboard/niche-card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search, Loader2, Info } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Search, Loader2, Info, FolderTree } from "lucide-react";
 import { searchNichesAction } from "@/actions/mercadolibre";
 import { NicheResult } from "@/lib/mercadolibre/niches-improved";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { CategorySelector } from "@/components/dashboard/category-selector";
+import { MlCategory } from "@/types/mercadolibre";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function NichesPage() {
-    const [categoryId, setCategoryId] = useState("MLA1051"); // Electrónica por defecto
+    const [selectedCategory, setSelectedCategory] = useState<{ id: string, name: string }>({ id: "MLA1051", name: "Electrónica" });
     const [loading, setLoading] = useState(false);
     const [niches, setNiches] = useState<NicheResult[]>([]);
     const [error, setError] = useState<string | null>(null);
+    const [selectorOpen, setSelectorOpen] = useState(false);
 
     const handleSearch = async () => {
-        if (!categoryId) return;
+        if (!selectedCategory.id) return;
         setLoading(true);
         setError(null);
         try {
-            const result = await searchNichesAction(categoryId);
+            const result = await searchNichesAction(selectedCategory.id, selectedCategory.name);
             if (result.success && result.data) {
                 setNiches(result.data);
             } else {
@@ -42,20 +53,51 @@ export default function NichesPage() {
                     <p className="text-muted-foreground">Explora categorías de Mercado Libre para encontrar huecos de mercado rentables.</p>
                 </div>
 
-                <div className="flex gap-2 p-4 bg-card border rounded-xl shadow-sm">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Ej: MLA1051 (Electrónica)"
-                            className="pl-10 h-11"
-                            value={categoryId}
-                            onChange={(e) => setCategoryId(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                        />
+                <div className="flex flex-col md:flex-row gap-4 p-6 bg-card border-2 border-primary/10 rounded-3xl shadow-xl shadow-primary/5">
+                    <div className="flex-1 flex flex-col gap-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Categoría a Analizar</label>
+                        <Dialog open={selectorOpen} onOpenChange={setSelectorOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" className="w-full h-12 justify-between px-4 text-left font-medium border-2 hover:border-primary/50 transition-all rounded-xl">
+                                    <div className="flex items-center gap-3 overflow-hidden">
+                                        <FolderTree className="h-5 w-5 text-primary shrink-0" />
+                                        <span className="truncate">{selectedCategory.name}</span>
+                                        <Badge variant="secondary" className="text-[10px] font-mono shrink-0">{selectedCategory.id}</Badge>
+                                    </div>
+                                    <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border-none rounded-3xl">
+                                <DialogHeader className="p-6 bg-primary text-primary-foreground">
+                                    <DialogTitle className="text-2xl flex items-center gap-2">
+                                        <FolderTree className="h-6 w-6" />
+                                        Explorador de Categorías
+                                    </DialogTitle>
+                                    <DialogDescription className="text-primary-foreground/80">
+                                        Navega por el árbol oficial de Mercado Libre para encontrar el nicho perfecto.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="p-4 bg-muted/20">
+                                    <CategorySelector
+                                        onSelect={(cat) => {
+                                            setSelectedCategory({ id: cat.id, name: cat.name });
+                                            setSelectorOpen(false);
+                                        }}
+                                    />
+                                </div>
+                            </DialogContent>
+                        </Dialog>
                     </div>
-                    <Button className="h-11 px-8" onClick={handleSearch} disabled={loading}>
-                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Analizar Categoría"}
-                    </Button>
+
+                    <div className="flex items-end">
+                        <Button
+                            className="h-12 px-10 font-bold text-lg rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 w-full md:w-auto"
+                            onClick={handleSearch}
+                            disabled={loading}
+                        >
+                            {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Analizar Oportunidades"}
+                        </Button>
+                    </div>
                 </div>
 
                 {error && (

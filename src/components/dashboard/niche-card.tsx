@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, Users, DollarSign, ArrowRight, Sparkles, Loader2, Copy, Check } from "lucide-react";
+import { TrendingUp, Users, DollarSign, ArrowRight, Sparkles, Loader2, Copy, Check, Star } from "lucide-react";
 import { NicheResult } from "@/lib/mercadolibre/niches-improved";
 import { generateCampaignAction } from "@/actions/campaigns";
+import { toggleFavoriteAction } from "@/actions/favorites";
 import {
     Dialog,
     DialogContent,
@@ -17,13 +18,33 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface NicheCardProps {
     niche: NicheResult;
+    initialIsFavorite?: boolean;
 }
 
-export function NicheCard({ niche }: NicheCardProps) {
+export function NicheCard({ niche, initialIsFavorite = false }: NicheCardProps) {
     const [generating, setGenerating] = useState(false);
     const [campaign, setCampaign] = useState<{ titles: string[], description: string } | null>(null);
     const [open, setOpen] = useState(false);
     const [copied, setCopied] = useState<string | null>(null);
+    const [isFavorite, setIsFavorite] = useState(initialIsFavorite);
+    const [toggling, setToggling] = useState(false);
+
+    const handleToggleFavorite = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        setToggling(true);
+        try {
+            const result = await toggleFavoriteAction(niche.niche, niche);
+            if (result.success) {
+                setIsFavorite(result.isFavorite!);
+            }
+        } catch (error) {
+            console.error("Error toggling favorite:", error);
+        } finally {
+            setToggling(false);
+        }
+    };
 
     const handleGenerateCampaign = async () => {
         setGenerating(true);
@@ -57,11 +78,22 @@ export function NicheCard({ niche }: NicheCardProps) {
     return (
         <Card className="overflow-hidden border-2 hover:border-primary/50 transition-colors flex flex-col h-full">
             <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                    <CardTitle className="text-xl capitalize line-clamp-1">{niche.niche}</CardTitle>
-                    <Badge variant="outline" className={`text-lg px-2 py-0.5 font-bold ${getScoreColor(niche.score)} flex-shrink-0 ml-2`}>
-                        {niche.score}
-                    </Badge>
+                <div className="flex justify-between items-start gap-2">
+                    <CardTitle className="text-xl capitalize line-clamp-1 flex-1">{niche.niche}</CardTitle>
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-8 w-8 rounded-full transition-all ${isFavorite ? 'text-yellow-500 fill-yellow-500 bg-yellow-500/10' : 'text-muted-foreground hover:text-yellow-500'}`}
+                            onClick={handleToggleFavorite}
+                            disabled={toggling}
+                        >
+                            {toggling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Star className="h-4 w-4" />}
+                        </Button>
+                        <Badge variant="outline" className={`text-lg px-2 py-0.5 font-bold ${getScoreColor(niche.score)} flex-shrink-0`}>
+                            {niche.score}
+                        </Badge>
+                    </div>
                 </div>
                 {niche.badge && (
                     <div className="flex gap-1 mt-1">

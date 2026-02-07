@@ -74,7 +74,7 @@ export class NichesProcessorImproved {
 
         // Filtrar nichos con menos de 2 productos (poco representativos)
         return Array.from(map.entries())
-            .filter(([_, items]) => items.length >= 2)
+            .filter(([, items]) => items.length >= 2)
             .map(([name, groupItems]) => {
                 const totalItems = groupItems.length;
                 const uniqueSellers = new Set(groupItems.map(i => i.seller_id)).size;
