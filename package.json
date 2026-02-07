@@ -15,6 +15,8 @@
     "db:diff": "supabase db diff -f",
     "db:migration": "supabase migration new",
     "db:status": "supabase status",
+    "functions:deploy": "supabase functions deploy",
+    "functions:secrets": "supabase secrets set",
     "vercel-check": "node scripts/vercel-check.js",
     "prepare": "husky"
   },
