@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { saveAppSettingsAction, getAppSettingsAction } from '@/actions/admin';
+import { getAppSettingsAction } from '@/actions/admin';
 import { encrypt, decrypt } from '@/lib/encryption';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
 interface MLConfig {
     clientId: string;
@@ -36,7 +37,9 @@ export async function GET(request: NextRequest) {
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
         const redirectUri = `${baseUrl}/api/auth/ml/callback`;
 
-        const response = await axios.post('https://api.mercadolibre.com/oauth/token', {
+        console.log('Exchanging ML code for tokens...', { clientId, redirectUri });
+
+        const params = new URLSearchParams({
             grant_type: 'authorization_code',
             client_id: clientId,
             client_secret: clientSecret,
@@ -44,19 +47,45 @@ export async function GET(request: NextRequest) {
             redirect_uri: redirectUri,
         });
 
-        const tokens = response.data;
-
-        await saveAppSettingsAction('ml_auth_tokens', {
-            access_token: encrypt(tokens.access_token),
-            refresh_token: encrypt(tokens.refresh_token),
-            expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
-            ml_user_id: tokens.user_id,
+        const response = await axios.post('https://api.mercadolibre.com/oauth/token', params.toString(), {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
 
+        const tokens = response.data;
+        console.log('ML Tokens received successfully for user:', tokens.user_id);
+
+        const { error: saveError } = await supabaseAdmin
+            .from('app_settings')
+            .upsert({
+                key: 'ml_auth_tokens',
+                value: {
+                    access_token: encrypt(tokens.access_token),
+                    refresh_token: encrypt(tokens.refresh_token),
+                    expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+                    ml_user_id: tokens.user_id.toString(),
+                },
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'key' });
+
+        if (saveError) {
+            console.error('Error saving tokens to database:', saveError);
+            return NextResponse.redirect(new URL('/admin/settings?error=db_save_failed', request.url));
+        }
+
+        console.log('ML Tokens saved successfully to database');
         return NextResponse.redirect(new URL('/admin/settings?success=connected', request.url));
     } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Error desconocido';
+        let message = 'Error desconocido';
+        if (axios.isAxiosError(err)) {
+            message = err.response?.data?.message || err.message;
+            if (err.response?.data) {
+                console.error('ML API Error Details:', err.response.data);
+            }
+        } else if (err instanceof Error) {
+            message = err.message;
+        }
+
         console.error('Error in ML Auth Callback:', message);
-        return NextResponse.redirect(new URL(`/admin/settings?error=auth_failed`, request.url));
+        return NextResponse.redirect(new URL(`/admin/settings?error=auth_failed&details=${encodeURIComponent(message)}`, request.url));
     }
 }
