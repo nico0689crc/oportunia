@@ -20,7 +20,7 @@ Utilizamos **Row Level Security (RLS)** en Supabase para garantizar que los usua
 - **Identificación**: Usamos `auth.jwt() ->> 'sub'` para comparar el ID de Clerk con el `user_id` de las tablas.
 - **Acceso Administrativo**: Para operaciones de sistema (background jobs), usamos una instancia de `supabaseAdmin` con el `SERVICE_ROLE_KEY`.
 
-### 2. Server Actions con Validación (Zod)
+### 2. Clerk (Authentication)
 Toda mutación de datos se maneja vía Server Actions:
 - **Validación**: Usamos `zod` para validar el input en el servidor.
 - **Seguridad**: Validamos la sesión del usuario con `auth()` de Clerk antes de ejecutar cualquier lógica.
@@ -49,29 +49,20 @@ El workflow en `.github/workflows/pipeline.yml` no solo construye la app, sino q
 > [!WARNING]
 > **Server vs Client Components**: Mantener las Server Actions en archivos separados con el directive `"use server"` para evitar fugas de secretos al cliente.
 
-## ⚡ Edge Functions & Clerk Billing (Webhooks)
+## ⚡ Edge Functions & Suscripciones (Webhooks)
 
-Para este proyecto usamos **Clerk Billing**, lo que simplifica enormemente la gestión de suscripciones al integrar Stripe directamente en Clerk.
+Para Oportunia usamos un sistema de pagos personalizado con **Mercado Pago** y **Supabase** para gestionar los beneficios de cada plan.
 
-### 1. Sincronización con Clerk (`clerk-webhook`)
-Este es tu **punto central de verdad**. Clerk enviará webhooks no solo para usuarios, sino también para eventos de facturación.
-- **Eventos**: `user.created`, `subscription.created`, `subscription.updated`.
-- **Uso**: Configura un único Webhook en Clerk que apunte a esta función.
-- **Seguridad**: Solo necesitas `CLERK_WEBHOOK_SECRET`.
-    - **¿Dónde encontrarlo?**: Dashboard de Clerk → **Webhooks** → Selecciona tu webhook → Busca **"Signing Secret"** en la barra lateral derecha (comienza con `wh_...`).
+### 1. Sincronización con Mercado Pago (`mercadopago-webhook`)
+Este es el punto que actualiza los permisos del usuario.
+- **Eventos**: `payment`.
+- **Lógica**: La función valida el pago con la API de MP y actualiza la tabla `subscriptions` en Supabase.
+- **Seguridad**: Se requiere el `MP_ACCESS_TOKEN` configurado como secreto en Supabase.
 
-### 🛠️ Pasos para crear el Webhook en Clerk
-1. **Despliega tu función**: Ejecuta `supabase functions deploy clerk-webhook`.
-2. **Obtén la URL**: La URL será `https://<tu-project-ref>.supabase.co/functions/v1/clerk-webhook`.
-3. **En Clerk**: Ve a **Dashboard** → **Webhooks** → **Add Endpoint**.
-4. **Endpoint URL**: Pega la URL del paso 2.
-5. **Message Filtering**: Selecciona los eventos que quieres escuchar (mínimo `user.created` y `subscription.*`).
-6. **Crear**: Haz clic en **Create**.
-7. **Secreto**: Copia el **Signing Secret** y configúralo en Supabase:
-   `supabase secrets set CLERK_WEBHOOK_SECRET=wh_...`
-
-### 2. Webhooks de Stripe (`stripe-webhook`) - *Opcional*
-Con Clerk Billing, la mayoría de los eventos de Stripe se reflejan en Clerk. Solo usa esta función si necesitas manejar lógica muy específica de Stripe que Clerk no cubra (ej: facturas personalizadas, impuestos complejos).
+### 2. Gestión de Usuarios (`clerk-webhook`)
+Usamos Clerk para la autenticación. Este webhook solo sincroniza la creación de usuarios para asegurar que tengan un perfil en nuestra base de datos.
+- **Eventos**: `user.created`.
+- **Seguridad**: Requiere `CLERK_WEBHOOK_SECRET`.
 
 ### 🛑 Comandos de Despliegue
 ```bash
