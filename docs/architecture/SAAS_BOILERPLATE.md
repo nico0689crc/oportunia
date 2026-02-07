@@ -60,6 +60,16 @@ Este es tu **punto central de verdad**. Clerk enviará webhooks no solo para usu
 - **Seguridad**: Solo necesitas `CLERK_WEBHOOK_SECRET`.
     - **¿Dónde encontrarlo?**: Dashboard de Clerk → **Webhooks** → Selecciona tu webhook → Busca **"Signing Secret"** en la barra lateral derecha (comienza con `wh_...`).
 
+### 🛠️ Pasos para crear el Webhook en Clerk
+1. **Despliega tu función**: Ejecuta `supabase functions deploy clerk-webhook`.
+2. **Obtén la URL**: La URL será `https://<tu-project-ref>.supabase.co/functions/v1/clerk-webhook`.
+3. **En Clerk**: Ve a **Dashboard** → **Webhooks** → **Add Endpoint**.
+4. **Endpoint URL**: Pega la URL del paso 2.
+5. **Message Filtering**: Selecciona los eventos que quieres escuchar (mínimo `user.created` y `subscription.*`).
+6. **Crear**: Haz clic en **Create**.
+7. **Secreto**: Copia el **Signing Secret** y configúralo en Supabase:
+   `supabase secrets set CLERK_WEBHOOK_SECRET=wh_...`
+
 ### 2. Webhooks de Stripe (`stripe-webhook`) - *Opcional*
 Con Clerk Billing, la mayoría de los eventos de Stripe se reflejan en Clerk. Solo usa esta función si necesitas manejar lógica muy específica de Stripe que Clerk no cubra (ej: facturas personalizadas, impuestos complejos).
 
