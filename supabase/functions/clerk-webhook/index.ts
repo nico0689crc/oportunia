@@ -46,6 +46,11 @@ serve(async (req) => {
     if (eventType === 'user.created') {
         // Lógica para sincronizar usuario con Supabase
         console.log(`User ${id} was created`)
+    } else if (eventType.startsWith('subscription.')) {
+        // Lógica de Clerk Billing: El usuario cambió su plan
+        const subscription = evt.data
+        console.log(`Subscription ${id} is now ${subscription.status}`)
+        // Aquí podrías actualizar una tabla de 'subscriptions' o 'profiles'
     }
 
     return new Response(JSON.stringify({ success: true }), {

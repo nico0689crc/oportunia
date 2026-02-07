@@ -49,27 +49,26 @@ El workflow en `.github/workflows/pipeline.yml` no solo construye la app, sino q
 > [!WARNING]
 > **Server vs Client Components**: Mantener las Server Actions en archivos separados con el directive `"use server"` para evitar fugas de secretos al cliente.
 
-## ⚡ Edge Functions & Webhooks (Background Jobs)
+## ⚡ Edge Functions & Clerk Billing (Webhooks)
 
-Para lógica que debe ejecutarse fuera del ciclo de vida de la UI, el boilerplate incluye plantillas listas para usar en `supabase/functions`.
+Para este proyecto usamos **Clerk Billing**, lo que simplifica enormemente la gestión de suscripciones al integrar Stripe directamente en Clerk.
 
-### 1. Webhooks de Stripe (`stripe-webhook`)
-Maneja eventos de pago, suscripciones y cancelaciones de forma asíncrona.
-- **Uso**: Configura el endpoint en el dashboard de Stripe apuntando a su URL de Edge Function.
-- **Seguridad**: Valida la firma del webhook usando `STRIPE_WEBHOOK_SECRET`.
+### 1. Sincronización con Clerk (`clerk-webhook`)
+Este es tu **punto central de verdad**. Clerk enviará webhooks no solo para usuarios, sino también para eventos de facturación.
+- **Eventos**: `user.created`, `subscription.created`, `subscription.updated`.
+- **Uso**: Configura un único Webhook en Clerk que apunte a esta función.
+- **Seguridad**: Solo necesitas `CLERK_WEBHOOK_SECRET`.
 
-### 2. Sincronización con Clerk (`clerk-webhook`)
-Mantiene tu base de datos sincronizada cuando un usuario se crea, actualiza o elimina en Clerk.
-- **Uso**: Configura el Webhook en el dashboard de Clerk.
-- **Librería**: Usa `svix` para verificar la autenticidad del evento.
+### 2. Webhooks de Stripe (`stripe-webhook`) - *Opcional*
+Con Clerk Billing, la mayoría de los eventos de Stripe se reflejan en Clerk. Solo usa esta función si necesitas manejar lógica muy específica de Stripe que Clerk no cubra (ej: facturas personalizadas, impuestos complejos).
 
 ### 🛑 Comandos de Despliegue
 ```bash
-# Desplegar una función específica
-supabase functions deploy stripe-webhook
+# Desplegar la lógica central de Clerk
+supabase functions deploy clerk-webhook
 
-# Configurar secretos en producción
-supabase secrets set STRIPE_SECRET_KEY=sk_active_...
+# Configurar el secreto de Clerk
+supabase secrets set CLERK_WEBHOOK_SECRET=wh_...
 ```
 
 ## 🛡️ Control de Calidad (Git Hooks)
