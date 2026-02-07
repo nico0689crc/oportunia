@@ -74,8 +74,6 @@ export const PLANS: Plan[] = [
     },
 ];
 
-export type SubscriptionTier = 'free' | 'pro' | 'elite';
-
 export interface SubscriptionData {
     tier: SubscriptionTier;
     usage_count: number;
