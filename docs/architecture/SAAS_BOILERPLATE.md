@@ -58,6 +58,7 @@ Este es tu **punto central de verdad**. Clerk enviará webhooks no solo para usu
 - **Eventos**: `user.created`, `subscription.created`, `subscription.updated`.
 - **Uso**: Configura un único Webhook en Clerk que apunte a esta función.
 - **Seguridad**: Solo necesitas `CLERK_WEBHOOK_SECRET`.
+    - **¿Dónde encontrarlo?**: Dashboard de Clerk → **Webhooks** → Selecciona tu webhook → Busca **"Signing Secret"** en la barra lateral derecha (comienza con `wh_...`).
 
 ### 2. Webhooks de Stripe (`stripe-webhook`) - *Opcional*
 Con Clerk Billing, la mayoría de los eventos de Stripe se reflejan en Clerk. Solo usa esta función si necesitas manejar lógica muy específica de Stripe que Clerk no cubra (ej: facturas personalizadas, impuestos complejos).
