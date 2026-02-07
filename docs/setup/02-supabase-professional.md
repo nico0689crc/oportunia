@@ -83,15 +83,33 @@ Esto ejecuta todas las migraciones pendientes en tu base de datos remota.
 
 ## Paso 6: Configurar Variables de Entorno
 
-Crea un archivo `.env.local` con:
+### Paso 6.1: Obtener las Credenciales
+
+1. **En el Dashboard de Supabase**, ve a **Project Settings** → **API**
+2. **Copia estos valores**:
+
+   - **Project URL**: 
+     ```
+     https://xxxxxxxxxxxxx.supabase.co
+     ```
+   
+   - **Publishable key** (⚠️ NUEVA - usa esta, NO la "anon" key):
+     ```
+     sb_publishable_xxxxxxxxxxxxxxxxxxxxx...
+     ```
+
+**⚠️ Importante sobre las claves:**
+- Si ves claves que empiezan con `sb_publishable_...` → **Usa esas (nuevas)**
+- Si solo ves claves que empiezan con `eyJhbG...` → Son legacy, funcionan pero se deprecarán en 2026
+- Ver guía detallada: [`docs/setup/02-supabase-keys.md`](./02-supabase-keys.md)
+
+### Paso 6.2: Crear archivo `.env.local`
+
+Crea un archivo `.env.local` con las credenciales obtenidas:
 
 ```bash
-# Obtener las credenciales
-supabase status
-
-# Copiar a .env.local
 NEXT_PUBLIC_SUPABASE_URL=https://TU_PROJECT_ID.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbG...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_xxxxxxxxxxxxxxxxxxxxx...
 ```
 
 ---
