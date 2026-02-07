@@ -108,6 +108,8 @@ export default function AdminSettingsForm() {
                                     onChange={(e) => setConfig({ ...config, clientId: e.target.value })}
                                     placeholder="ID de tu aplicación"
                                     className="border-primary/20 focus-visible:ring-primary"
+                                    autoComplete="off"
+                                    spellCheck={false}
                                 />
                             </div>
                             <div className="space-y-2">
@@ -119,6 +121,8 @@ export default function AdminSettingsForm() {
                                     onChange={(e) => setConfig({ ...config, clientSecret: e.target.value })}
                                     placeholder="••••••••••••••••"
                                     className="border-primary/20 focus-visible:ring-primary"
+                                    autoComplete="new-password"
+                                    spellCheck={false}
                                 />
                             </div>
                         </div>
