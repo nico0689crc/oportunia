@@ -8,6 +8,11 @@ export async function isAdmin() {
 
     // Casting para acceder a los metadatos personalizados en el JWT de Clerk
     const metadata = (sessionClaims?.metadata || {}) as { role?: string };
+
+    if (metadata.role !== 'admin') {
+        console.warn(`Access denied: User does not have admin role. Current role: ${metadata.role || 'none'}`);
+    }
+
     return metadata.role === 'admin';
 }
 
