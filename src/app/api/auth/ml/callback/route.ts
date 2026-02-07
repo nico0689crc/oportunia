@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { saveAppSettingsAction } from '@/actions/admin';
+import { encrypt } from '@/lib/encryption';
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
@@ -31,8 +32,8 @@ export async function GET(request: NextRequest) {
         const tokens = response.data;
 
         await saveAppSettingsAction('ml_auth_tokens', {
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token,
+            access_token: encrypt(tokens.access_token),
+            refresh_token: encrypt(tokens.refresh_token),
             expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
             ml_user_id: tokens.user_id,
         });

@@ -16,7 +16,11 @@ supabase secrets set MP_ACCESS_TOKEN=tu_access_token
 ## 3. Configurar el Webhook en Mercado Pago
 1. En tu aplicación de MP, ve a **Webhooks**.
 2. Configura la URL: `https://<tu-proyecto>.supabase.co/functions/v1/mercadopago-webhook`
-3. Selecciona el evento: **Pagos** (`payments`).
+3. En **Modo de envío**, selecciona: `JSON`.
+4. En **Eventos**, selecciona obligatoriamente:
+   - **Pagos** (`payment`)
+   - **Suscripciones** (`preapproval`)
+   - **Planes de suscripción** (`preapproval_plan`) (Opcional)
 
 ## 4. Implementación de Suscripciones (Pre-approvals)
 Al crear la suscripción en tu Frontend, usamos `PreApproval` para cobros automáticos:

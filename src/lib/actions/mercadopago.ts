@@ -2,10 +2,7 @@
 
 import { MercadoPagoConfig, PreApproval } from 'mercadopago';
 import { auth } from '@clerk/nextjs/server';
-
-const client = new MercadoPagoConfig({
-    accessToken: process.env.MP_ACCESS_TOKEN!,
-});
+import { getValidAdminToken } from '@/lib/mercadopago/admin-auth';
 
 export async function createSubscriptionPreference(plan: {
     name: string;
@@ -18,7 +15,12 @@ export async function createSubscriptionPreference(plan: {
         throw new Error('No estás autenticado');
     }
 
-    const preapproval = new PreApproval(client);
+    const accessToken = await getValidAdminToken();
+    const mongoClient = new MercadoPagoConfig({
+        accessToken: accessToken,
+    });
+
+    const preapproval = new PreApproval(mongoClient);
 
     try {
         const result = await preapproval.create({
