@@ -77,13 +77,15 @@ jobs:
       - name: Deploy to Staging
         if: github.event_name == 'pull_request'
         run: |
-          supabase db push --project-ref ${{ secrets.SUPABASE_STAGING_PROJECT_ID }} --password ${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}
+          supabase link --project-ref ${{ secrets.SUPABASE_STAGING_PROJECT_ID }} --password ${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}
+          supabase db push
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Deploy to Production
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
-          supabase db push --project-ref ${{ secrets.SUPABASE_PRODUCTION_PROJECT_ID }} --password ${{ secrets.SUPABASE_PRODUCTION_DB_PASSWORD }}
+          supabase link --project-ref ${{ secrets.SUPABASE_PRODUCTION_PROJECT_ID }} --password ${{ secrets.SUPABASE_PRODUCTION_DB_PASSWORD }}
+          supabase db push
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
