@@ -71,6 +71,7 @@ jobs:
       - name: Validate SQL syntax
         if: steps.check_changes.outputs.changes == 'true' || github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
         run: |
+          supabase start
           supabase db lint
 
       - name: Deploy to Staging
