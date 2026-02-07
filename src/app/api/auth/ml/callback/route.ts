@@ -52,9 +52,15 @@ export async function GET(request: NextRequest) {
         });
 
         const tokens = response.data;
-        console.log('ML Tokens received successfully for user:', tokens.user_id);
+        console.log('ML Tokens received successfully:', {
+            user_id: tokens.user_id,
+            has_access: !!tokens.access_token,
+            has_refresh: !!tokens.refresh_token,
+            expires_in: tokens.expires_in
+        });
 
-        const { error: saveError } = await supabaseAdmin
+        console.log('Attempting DB upsert for ml_auth_tokens...');
+        const { data: upsertData, error: saveError } = await supabaseAdmin
             .from('app_settings')
             .upsert({
                 key: 'ml_auth_tokens',
@@ -65,14 +71,15 @@ export async function GET(request: NextRequest) {
                     ml_user_id: tokens.user_id.toString(),
                 },
                 updated_at: new Date().toISOString()
-            }, { onConflict: 'key' });
+            }, { onConflict: 'key' })
+            .select();
 
         if (saveError) {
-            console.error('Error saving tokens to database:', saveError);
-            return NextResponse.redirect(new URL('/admin/settings?error=db_save_failed', request.url));
+            console.error('CRITICAL: Error saving tokens to database:', saveError);
+            return NextResponse.redirect(new URL(`/admin/settings?error=db_save_failed&msg=${encodeURIComponent(saveError.message)}`, request.url));
         }
 
-        console.log('ML Tokens saved successfully to database');
+        console.log('DB Upsert SUCCESS. Row count:', upsertData?.length);
         return NextResponse.redirect(new URL('/admin/settings?success=connected', request.url));
     } catch (err: unknown) {
         let message = 'Error desconocido';

@@ -70,11 +70,18 @@ export async function saveAppSettingsAction(key: string, value: unknown) {
  */
 export async function getAppSettingsAction<T>(key: string): Promise<T | null> {
     const { data, error } = await supabaseAdmin
-        .from('app_settings') // Revert to 'app_settings' as per original function's intent
-        .select('value') // Revert to 'value' as per original function's intent
+        .from('app_settings')
+        .select('value')
         .eq('key', key)
         .single();
 
-    if (error || !data) return null;
+    if (error) {
+        if (error.code !== 'PGRST116') { // PGRST116 is code for "no rows found"
+            console.error(`Error fetching app setting ${key}:`, error);
+        }
+        return null;
+    }
+
+    if (!data) return null;
     return data.value as T;
 }
