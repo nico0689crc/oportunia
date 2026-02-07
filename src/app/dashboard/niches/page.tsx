@@ -11,7 +11,7 @@ export default function NichesPage() {
                     <p className="text-muted-foreground">Explora categorías de Mercado Libre para encontrar huecos de mercado rentables.</p>
                 </div>
 
-                <FeatureGate feature="niche_search">
+                <FeatureGate tier="pro">
                     <NichesClient />
                 </FeatureGate>
             </div>
