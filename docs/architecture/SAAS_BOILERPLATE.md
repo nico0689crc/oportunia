@@ -49,5 +49,28 @@ El workflow en `.github/workflows/pipeline.yml` no solo construye la app, sino q
 > [!WARNING]
 > **Server vs Client Components**: Mantener las Server Actions en archivos separados con el directive `"use server"` para evitar fugas de secretos al cliente.
 
+## ⚡ Edge Functions & Webhooks (Background Jobs)
+
+Para lógica que debe ejecutarse fuera del ciclo de vida de la UI, el boilerplate incluye plantillas listas para usar en `supabase/functions`.
+
+### 1. Webhooks de Stripe (`stripe-webhook`)
+Maneja eventos de pago, suscripciones y cancelaciones de forma asíncrona.
+- **Uso**: Configura el endpoint en el dashboard de Stripe apuntando a su URL de Edge Function.
+- **Seguridad**: Valida la firma del webhook usando `STRIPE_WEBHOOK_SECRET`.
+
+### 2. Sincronización con Clerk (`clerk-webhook`)
+Mantiene tu base de datos sincronizada cuando un usuario se crea, actualiza o elimina en Clerk.
+- **Uso**: Configura el Webhook en el dashboard de Clerk.
+- **Librería**: Usa `svix` para verificar la autenticidad del evento.
+
+### 🛑 Comandos de Despliegue
+```bash
+# Desplegar una función específica
+supabase functions deploy stripe-webhook
+
+# Configurar secretos en producción
+supabase secrets set STRIPE_SECRET_KEY=sk_active_...
+```
+
 ---
 **Este documento es la base para futuros proyectos SaaS. Mantenerlo actualizado con cada nueva mejora estructural.**
