@@ -1,78 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Zap, Shield, Target, LucideIcon } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { createSubscriptionPreference } from '@/lib/actions/mercadopago';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-
-interface Plan {
-    id: string;
-    tier: string;
-    name: string;
-    description: string;
-    price: number;
-    features: string[];
-    icon: LucideIcon;
-    buttonText: string;
-    highlight: boolean;
-}
-
-const plans: Plan[] = [
-    {
-        id: 'plan_free',
-        tier: 'free',
-        name: 'Cazador',
-        description: 'Para principiantes que buscan su primer nicho.',
-        price: 0,
-        features: [
-            '5 Búsquedas de nichos / mes',
-            '3 Análisis con IA / mes',
-            '1 Campaña con IA / mes',
-            '1 Producto monitoreado',
-            'Soporte comunitario',
-        ],
-        icon: Target,
-        buttonText: 'Plan Actual',
-        highlight: false,
-    },
-    {
-        id: 'plan_pro',
-        tier: 'pro',
-        name: 'Vendedor',
-        description: 'Para vendedores activos que quieren escalar.',
-        price: 15000,
-        features: [
-            '50 Búsquedas de nichos / mes',
-            '30 Análisis con IA / mes',
-            '15 Campañas con IA / mes',
-            '20 Productos monitoreados',
-            'Alertas en tiempo real',
-            'Soporte prioritario',
-        ],
-        icon: Zap,
-        buttonText: 'Elegir Plan Vendedor',
-        highlight: true,
-    },
-    {
-        id: 'plan_elite',
-        tier: 'elite',
-        name: 'Dominador',
-        description: 'Para power sellers y agencias.',
-        price: 45000,
-        features: [
-            'Búsquedas Ilimitadas',
-            'Análisis con IA Ilimitados',
-            'Campañas con IA Ilimitadas',
-            'Monitoreo Ilimitado',
-            'Alertas Avanzadas',
-            'Soporte 24/7 Personalizado',
-        ],
-        icon: Shield,
-        buttonText: 'Elegir Plan Dominador',
-        highlight: false,
-    },
-];
+import { PLANS, type Plan } from '@/lib/subscriptions';
 
 export default function PricingPage() {
     const [loading, setLoading] = useState<string | null>(null);
@@ -106,7 +39,7 @@ export default function PricingPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
-                {plans.map((plan) => (
+                {PLANS.map((plan) => (
                     <Card
                         key={plan.id}
                         className={`flex flex-col relative overflow-hidden transition-all hover:shadow-xl ${plan.highlight ? 'border-primary shadow-lg scale-105 z-10' : ''
