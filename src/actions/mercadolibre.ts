@@ -1,7 +1,7 @@
 'use server';
 
 import { getMlClient } from '@/lib/mercadolibre/client';
-import { NichesProcessor, NicheResult } from '@/lib/mercadolibre/niches';
+import { NichesProcessorImproved, NicheResult } from '@/lib/mercadolibre/niches-improved';
 
 /**
  * Acción para buscar nichos en una categoría
@@ -17,7 +17,7 @@ export async function searchNichesAction(categoryId: string): Promise<{
         const client = getMlClient();
 
         const response = await client.getHighlightsByCategory(categoryId);
-        const results = NichesProcessor.analyzeAndGroup(response.results);
+        const results = NichesProcessorImproved.analyzeAndGroup(response.results);
 
         return {
             success: true,

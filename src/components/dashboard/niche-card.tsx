@@ -2,7 +2,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, Users, DollarSign, ArrowRight } from "lucide-react";
-import { NicheResult } from "@/lib/mercadolibre/niches";
+import { NicheResult } from "@/lib/mercadolibre/niches-improved";
 
 interface NicheCardProps {
     niche: NicheResult;

@@ -53,7 +53,7 @@ export class NichesProcessorImproved {
         const sortedByScore = [...results].sort((a, b) => b.score - a.score);
         const top10Threshold = sortedByScore[Math.floor(sortedByScore.length * 0.1)]?.score || 80;
 
-        return results.map(r => ({
+        return results.map((r): NicheResult => ({
             ...r,
             badge: r.score >= top10Threshold ? 'top-10' :
                 r.demand > 70 && r.competition < 50 ? 'rising' :
