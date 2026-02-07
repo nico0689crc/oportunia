@@ -10,6 +10,7 @@ import { Key, Globe, Save, RefreshCw, CheckCircle2, BrainCircuit } from "lucide-
 import { saveAppSettingsAction, getAppSettingsAction } from "@/actions/admin";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { encrypt } from "@/lib/encryption";
 
 interface MLConfig {
     clientId: string;
@@ -41,7 +42,12 @@ export default function AdminSettingsForm() {
             const savedConfig = await getAppSettingsAction<MLConfig>('ml_config');
             const savedAuth = await getAppSettingsAction<MLAuthStatus>('ml_auth_tokens');
 
-            if (savedConfig) setConfig(savedConfig);
+            if (savedConfig) {
+                setConfig({
+                    ...savedConfig,
+                    clientSecret: savedConfig.clientSecret ? '••••••••••••••••' : ''
+                });
+            }
             if (savedAuth) setAuthStatus(savedAuth);
         } catch (error) {
             console.error("Failed to load settings:", error);
@@ -56,7 +62,14 @@ export default function AdminSettingsForm() {
 
     const handleSave = async () => {
         setSaving(true);
-        const promise = saveAppSettingsAction('ml_config', config);
+
+        // Prepare config for saving (encrypt secret if changed)
+        const configToSave = { ...config };
+        if (configToSave.clientSecret && configToSave.clientSecret !== '••••••••••••••••') {
+            configToSave.clientSecret = encrypt(configToSave.clientSecret);
+        }
+
+        const promise = saveAppSettingsAction('ml_config', configToSave);
 
         toast.promise(promise, {
             loading: 'Guardando configuración...',

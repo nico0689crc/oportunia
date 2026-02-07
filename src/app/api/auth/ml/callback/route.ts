@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { saveAppSettingsAction } from '@/actions/admin';
-import { encrypt } from '@/lib/encryption';
+import { saveAppSettingsAction, getAppSettingsAction } from '@/actions/admin';
+import { encrypt, decrypt } from '@/lib/encryption';
+
+interface MLConfig {
+    clientId: string;
+    clientSecret: string;
+    siteId: string;
+}
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
@@ -17,9 +23,17 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const clientId = process.env.ML_CLIENT_ID;
-        const clientSecret = process.env.ML_CLIENT_SECRET;
-        const redirectUri = process.env.ML_REDIRECT_URI;
+        // Fetch config from DB instead of .env
+        const config = await getAppSettingsAction<MLConfig>('ml_config');
+
+        if (!config || !config.clientId || !config.clientSecret) {
+            console.error('ML Configuration missing in database');
+            return NextResponse.redirect(new URL('/admin/settings?error=missing_config', request.url));
+        }
+
+        const clientId = config.clientId;
+        const clientSecret = decrypt(config.clientSecret);
+        const redirectUri = `${request.nextUrl.origin}/api/auth/ml/callback`;
 
         const response = await axios.post('https://api.mercadolibre.com/oauth/token', {
             grant_type: 'authorization_code',

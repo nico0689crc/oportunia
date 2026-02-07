@@ -9,6 +9,12 @@ interface AuthTokens {
     ml_user_id: string;
 }
 
+interface MLConfig {
+    clientId: string;
+    clientSecret: string;
+    siteId: string;
+}
+
 /**
  * Gets a valid Mercado Pago/Libre Access Token for Admin operations.
  * Automatically refreshes the token if expired or near expiry.
@@ -39,16 +45,28 @@ export async function getValidAdminToken(): Promise<string> {
 
     console.log('Mercado Pago Admin token expired or near expiry. Refreshing...');
 
+    // Fetch config to get clientId and encrypted clientSecret
+    const config = await getAppSettingsAction<MLConfig>('ml_config');
+    if (!config || !config.clientId || !config.clientSecret) {
+        throw new Error('ML_CONFIG_MISSING: Cannot refresh token without application credentials.');
+    }
+
     // Need to refresh
     let decryptedRefreshToken: string;
+    let decryptedClientSecret: string;
     try {
         decryptedRefreshToken = decrypt(refresh_token);
+        decryptedClientSecret = decrypt(config.clientSecret);
     } catch (error) {
-        throw new Error('CORRUPTED_TOKENS: Failed to decrypt refresh token.');
+        throw new Error('CORRUPTED_TOKENS: Failed to decrypt credentials.');
     }
 
     try {
-        const newTokens = await MlAuth.refreshToken(decryptedRefreshToken);
+        const newTokens = await MlAuth.refreshToken(
+            config.clientId,
+            decryptedClientSecret,
+            decryptedRefreshToken
+        );
 
         // Save new tokens (ENCRYPTED)
         const updatedTokens: AuthTokens = {

@@ -2,9 +2,6 @@ import crypto from 'crypto';
 import axios from 'axios';
 import { MlTokenResponse } from '@/types/mercadolibre';
 
-const ML_CLIENT_ID = process.env.ML_CLIENT_ID!;
-const ML_CLIENT_SECRET = process.env.ML_CLIENT_SECRET!;
-const ML_REDIRECT_URI = process.env.ML_REDIRECT_URI!;
 const ML_AUTH_BASE_URL = 'https://auth.mercadolibre.com.ar';
 const ML_API_BASE_URL = 'https://api.mercadolibre.com';
 
@@ -29,11 +26,11 @@ export class MlAuth {
     /**
      * Genera la URL de autorización
      */
-    static getAuthorizationUrl(codeChallenge: string, state: string): string {
+    static getAuthorizationUrl(clientId: string, redirectUri: string, codeChallenge: string, state: string): string {
         const params = new URLSearchParams({
             response_type: 'code',
-            client_id: ML_CLIENT_ID,
-            redirect_uri: ML_REDIRECT_URI,
+            client_id: clientId,
+            redirect_uri: redirectUri,
             code_challenge: codeChallenge,
             code_challenge_method: 'S256',
             state: state,
@@ -47,13 +44,13 @@ export class MlAuth {
     /**
      * Intercambia el código por un token
      */
-    static async exchangeCodeForToken(code: string, codeVerifier: string): Promise<MlTokenResponse> {
+    static async exchangeCodeForToken(clientId: string, clientSecret: string, redirectUri: string, code: string, codeVerifier: string): Promise<MlTokenResponse> {
         const params = new URLSearchParams({
             grant_type: 'authorization_code',
-            client_id: ML_CLIENT_ID,
-            client_secret: ML_CLIENT_SECRET,
+            client_id: clientId,
+            client_secret: clientSecret,
             code: code,
-            redirect_uri: ML_REDIRECT_URI,
+            redirect_uri: redirectUri,
             code_verifier: codeVerifier,
         });
 
@@ -70,11 +67,11 @@ export class MlAuth {
     /**
      * Refresca el token
      */
-    static async refreshToken(refreshToken: string): Promise<MlTokenResponse> {
+    static async refreshToken(clientId: string, clientSecret: string, refreshToken: string): Promise<MlTokenResponse> {
         const params = new URLSearchParams({
             grant_type: 'refresh_token',
-            client_id: ML_CLIENT_ID,
-            client_secret: ML_CLIENT_SECRET,
+            client_id: clientId,
+            client_secret: clientSecret,
             refresh_token: refreshToken,
         });
 
