@@ -5,9 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Key, Globe, Save, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Key, Globe, Save, RefreshCw, CheckCircle2, XCircle, BrainCircuit } from "lucide-react";
 import { saveAppSettingsAction, getAppSettingsAction } from "@/actions/admin";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 export default function AdminSettingsForm() {
     const [loading, setLoading] = useState(false);
@@ -19,7 +20,6 @@ export default function AdminSettingsForm() {
     });
     const [authStatus, setAuthStatus] = useState<any>(null);
     const searchParams = useSearchParams();
-    const router = useRouter();
 
     useEffect(() => {
         loadSettings();
@@ -39,113 +39,149 @@ export default function AdminSettingsForm() {
         setSaving(true);
         const result = await saveAppSettingsAction('ml_config', config);
         if (result.success) {
-            alert("Configuración guardada");
-        } else {
-            alert("Error al guardar: " + result.error);
+            // alert("Configuración guardada");
         }
         setSaving(false);
     };
 
     const handleConnect = () => {
-        // Enviar a ML para OAuth
-        const clientId = config.clientId || process.env.NEXT_PUBLIC_ML_CLIENT_ID;
+        const clientId = config.clientId;
         const redirectUri = encodeURIComponent(window.location.origin + "/api/auth/ml/callback");
         const url = `https://auth.mercadolibre.com.ar/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}`;
         window.location.href = url;
     };
 
-    if (loading) return <div>Cargando configuración...</div>;
+    if (loading) return (
+        <div className="space-y-4 animate-pulse">
+            <div className="h-10 bg-muted rounded w-1/4" />
+            <div className="h-64 bg-muted rounded" />
+        </div>
+    );
 
     return (
-        <Card className="border-2">
-            <CardHeader className="bg-muted/50">
-                <CardTitle className="flex items-center gap-2">
-                    <Globe className="h-5 w-5 text-blue-500" />
-                    Mercado Libre API (OAuth)
-                </CardTitle>
-                <CardDescription>
-                    Estas credenciales se usarán para todas las consultas de búsqueda y análisis del sistema.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                        <Label htmlFor="client_id">Client ID</Label>
-                        <Input
-                            id="client_id"
-                            value={config.clientId}
-                            onChange={(e) => setConfig({ ...config, clientId: e.target.value })}
-                            placeholder="Copia el ID de tu app en ML"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="client_secret">Client Secret</Label>
-                        <Input
-                            id="client_secret"
-                            type="password"
-                            value={config.clientSecret}
-                            onChange={(e) => setConfig({ ...config, clientSecret: e.target.value })}
-                            placeholder="••••••••••••••••"
-                        />
-                    </div>
-                </div>
+        <Tabs defaultValue="mercadolibre" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 md:w-[400px]">
+                <TabsTrigger value="mercadolibre" className="flex items-center gap-2">
+                    <Globe className="h-4 w-4" /> Mercado Libre
+                </TabsTrigger>
+                <TabsTrigger value="ai" className="flex items-center gap-2">
+                    <BrainCircuit className="h-4 w-4" /> Configuración IA
+                </TabsTrigger>
+            </TabsList>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                        <Label htmlFor="site_id">Site ID (Default)</Label>
-                        <Input
-                            id="site_id"
-                            value={config.siteId}
-                            onChange={(e) => setConfig({ ...config, siteId: e.target.value })}
-                            placeholder="MLA (Argentina), MLB (Brasil), etc."
-                        />
-                    </div>
-                </div>
+            <TabsContent value="mercadolibre" className="mt-6 space-y-6">
+                <Card className="border-2 shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-xl">Credenciales de Aplicación</CardTitle>
+                        <CardDescription>
+                            Configura los parámetros de OAuth para la integración oficial con la API de Mercado Libre.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="grid gap-6 md:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="client_id" className="text-sm font-semibold">Client ID</Label>
+                                <Input
+                                    id="client_id"
+                                    value={config.clientId}
+                                    onChange={(e) => setConfig({ ...config, clientId: e.target.value })}
+                                    placeholder="ID de tu aplicación"
+                                    className="border-primary/20 focus-visible:ring-primary"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="client_secret" className="text-sm font-semibold">Client Secret</Label>
+                                <Input
+                                    id="client_secret"
+                                    type="password"
+                                    value={config.clientSecret}
+                                    onChange={(e) => setConfig({ ...config, clientSecret: e.target.value })}
+                                    placeholder="••••••••••••••••"
+                                    className="border-primary/20 focus-visible:ring-primary"
+                                />
+                            </div>
+                        </div>
 
-                <div className="pt-4 flex flex-col sm:flex-row gap-4">
-                    <Button className="font-bold" onClick={handleSave} disabled={saving}>
-                        {saving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        Guardar Cambios
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="text-primary border-primary hover:bg-primary/5"
-                        onClick={handleConnect}
-                        disabled={!config.clientId}
-                    >
-                        <RefreshCw className="mr-2 h-4 w-4" /> Conectar con Mercado Libre
-                    </Button>
-                </div>
+                        <div className="grid gap-6 md:grid-cols-3">
+                            <div className="space-y-2">
+                                <Label htmlFor="site_id" className="text-sm font-semibold">Site ID por Defecto</Label>
+                                <Input
+                                    id="site_id"
+                                    value={config.siteId}
+                                    onChange={(e) => setConfig({ ...config, siteId: e.target.value })}
+                                    placeholder="MLA"
+                                />
+                            </div>
+                        </div>
 
-                {authStatus ? (
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-sm text-green-800 flex items-center gap-2">
-                            <CheckCircle2 className="h-4 w-4" />
-                            <strong>Estado: Conectado.</strong> Token expira el: {new Date(authStatus.expires_at).toLocaleString()}
-                        </p>
-                    </div>
-                ) : (
-                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-sm text-yellow-800 flex items-center gap-2">
-                            <Key className="h-4 w-4" />
-                            <strong>Estado: No conectado.</strong> Debes configurar y conectar tu app.
-                        </p>
-                    </div>
-                )}
+                        <div className="pt-4 flex flex-wrap gap-4 border-t">
+                            <Button className="font-bold px-8 shadow-md transition-all hover:scale-[1.02]" onClick={handleSave} disabled={saving}>
+                                {saving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                Guardar Cambios
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className="border-primary text-primary hover:bg-primary/5 transition-all"
+                                onClick={handleConnect}
+                                disabled={!config.clientId}
+                            >
+                                <RefreshCw className="mr-2 h-4 w-4" /> Sincronizar con ML
+                            </Button>
+                        </div>
 
-                {searchParams.get('success') === 'connected' && (
-                    <div className="p-4 bg-green-100 border border-green-500 rounded-lg animate-pulse">
-                        <p className="text-sm text-green-900 font-bold">¡Conexión exitosa! El sistema ya está vinculado a Mercado Libre.</p>
-                    </div>
-                )}
-                {searchParams.get('error') && (
-                    <div className="p-4 bg-red-100 border border-red-500 rounded-lg text-red-900">
-                        <p className="text-sm font-bold flex items-center gap-2">
-                            <XCircle className="h-4 w-4" /> Error en la autenticación: {searchParams.get('error')}
-                        </p>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
+                        {authStatus ? (
+                            <div className="flex items-center gap-4 p-4 bg-green-50 border border-green-200 rounded-xl">
+                                <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                                    <CheckCircle2 className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-green-900">Estado: Conectado Correctamente</p>
+                                    <p className="text-xs text-green-700">Token válido hasta: {new Date(authStatus.expires_at).toLocaleString()}</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                                <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+                                    <Key className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-amber-900">Estado: Requiere Acción</p>
+                                    <p className="text-xs text-amber-700">Debes sincronizar tu cuenta para habilitar las búsquedas.</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {searchParams.get('success') === 'connected' && (
+                            <div className="p-4 bg-green-600 text-white rounded-lg shadow-lg animate-in fade-in zoom-in duration-300">
+                                <p className="text-sm font-bold flex items-center gap-2">
+                                    <CheckCircle2 className="h-5 w-5" /> ¡Conexión con Mercado Libre establecida con éxito!
+                                </p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
+            <TabsContent value="ai" className="mt-6">
+                <Card className="border-2 shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-xl">Motor de Inteligencia Artificial</CardTitle>
+                        <CardDescription>
+                            Configura qué modelo de IA procesará la generación de campañas.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="p-8 text-center border-2 border-dashed rounded-xl bg-muted/30">
+                            <BrainCircuit className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                            <h3 className="text-lg font-semibold">Configuración de IA en camino</h3>
+                            <p className="text-sm text-muted-foreground max-w-sm mx-auto mt-2">
+                                Actualmente el sistema utiliza Google Gemini 1.5 Flash por defecto. Próximamente podrás cambiar a GPT-4 o modelos locales.
+                            </p>
+                            <Button variant="outline" className="mt-6" disabled>Próximamente</Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+        </Tabs>
     );
 }

@@ -72,37 +72,46 @@ export function AppSidebar() {
     const { user } = useUser();
     const isAdmin = user?.publicMetadata?.role === 'admin';
 
+    const isAdminRoute = pathname.startsWith('/admin');
+    const isDashboardRoute = pathname.startsWith('/dashboard');
+
     return (
         <Sidebar collapsible="icon">
             <SidebarHeader className="flex items-center justify-between p-4">
-                <Link href="/dashboard" className="flex items-center gap-2 font-bold text-xl">
+                <Link href={isAdminRoute ? "/admin" : "/dashboard"} className="flex items-center gap-2 font-bold text-xl">
                     <div className="bg-primary text-primary-foreground p-1 rounded">OP</div>
-                    <span className="group-data-[collapsible=icon]:hidden">Oportunia</span>
+                    <span className="group-data-[collapsible=icon]:hidden">
+                        {isAdminRoute ? "Admin Oportunia" : "Oportunia"}
+                    </span>
                 </Link>
             </SidebarHeader>
 
             <SidebarContent>
-                <SidebarGroup>
-                    <SidebarGroupLabel>Principal</SidebarGroupLabel>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            {items.map((item) => (
-                                <SidebarMenuItem key={item.title}>
-                                    <SidebarMenuButton asChild isActive={pathname === item.url}>
-                                        <Link href={item.url}>
-                                            <item.icon />
-                                            <span>{item.title}</span>
-                                        </Link>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
-
-                {isAdmin && (
+                {/* Menú de Usuario (Solo en rutas /dashboard) */}
+                {isDashboardRoute && (
                     <SidebarGroup>
-                        <SidebarGroupLabel className="text-primary font-bold">Administración</SidebarGroupLabel>
+                        <SidebarGroupLabel>Principal</SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                {items.map((item) => (
+                                    <SidebarMenuItem key={item.title}>
+                                        <SidebarMenuButton asChild isActive={pathname === item.url}>
+                                            <Link href={item.url}>
+                                                <item.icon />
+                                                <span>{item.title}</span>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                )}
+
+                {/* Menú de Administración (Solo en rutas /admin) */}
+                {isAdminRoute && (
+                    <SidebarGroup>
+                        <SidebarGroupLabel className="text-primary font-bold">Gestión de Sistema</SidebarGroupLabel>
                         <SidebarGroupContent>
                             <SidebarMenu>
                                 {adminItems.map((item) => (
@@ -115,28 +124,58 @@ export function AppSidebar() {
                                         </SidebarMenuButton>
                                     </SidebarMenuItem>
                                 ))}
+                                {/* Botón para volver al Panel de Usuario */}
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton asChild>
+                                        <Link href="/dashboard" className="mt-4 border-t pt-4 text-muted-foreground hover:text-primary">
+                                            <LayoutDashboard className="h-4 w-4" />
+                                            <span>Ir a App Usuario</span>
+                                        </Link>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
                             </SidebarMenu>
                         </SidebarGroupContent>
                     </SidebarGroup>
                 )}
 
-                <SidebarGroup className="mt-auto">
-                    <SidebarGroupLabel>Sistema</SidebarGroupLabel>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            {secondaryItems.map((item) => (
-                                <SidebarMenuItem key={item.title}>
-                                    <SidebarMenuButton asChild isActive={pathname === item.url}>
-                                        <Link href={item.url}>
-                                            <item.icon />
-                                            <span>{item.title}</span>
+                {/* Botón de acceso Admin desde Dashboard (Si es admin) */}
+                {isDashboardRoute && isAdmin && (
+                    <SidebarGroup>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton asChild className="bg-yellow-500/10 text-yellow-700 hover:bg-yellow-500/20 hover:text-yellow-800">
+                                        <Link href="/admin">
+                                            <ShieldAlert className="h-4 w-4" />
+                                            <span className="font-bold text-xs uppercase tracking-wider">Acceso Administrador</span>
                                         </Link>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
-                            ))}
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                )}
+
+                {/* Items Secundarios (Solo en Dashboard) */}
+                {isDashboardRoute && (
+                    <SidebarGroup className="mt-auto">
+                        <SidebarGroupLabel>Sistema</SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                {secondaryItems.map((item) => (
+                                    <SidebarMenuItem key={item.title}>
+                                        <SidebarMenuButton asChild isActive={pathname === item.url}>
+                                            <Link href={item.url}>
+                                                <item.icon />
+                                                <span>{item.title}</span>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                ))}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                )}
             </SidebarContent>
 
             <SidebarFooter className="p-4 border-t">
