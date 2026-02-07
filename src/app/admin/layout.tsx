@@ -1,6 +1,7 @@
 import { isAdmin } from "@/lib/auth/roles";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/dashboard/app-sidebar"; // Podemos crear una específica luego
+import { AppSidebar } from "@/components/dashboard/app-sidebar";
+import { redirect } from "next/navigation";
 
 export default async function AdminLayout({
     children,
@@ -10,9 +11,7 @@ export default async function AdminLayout({
     const admin = await isAdmin();
 
     if (!admin) {
-        // redirect("/dashboard");
-        // Para desarrollo, permitiremos el acceso si el usuario es el dueño (Nico)
-        // O simplemente dejamos un warning si no está configurado aún
+        redirect("/dashboard");
     }
 
     return (
