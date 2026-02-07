@@ -19,7 +19,7 @@ serve(async (req) => {
     const body = JSON.stringify(payload)
 
     const wh = new Webhook(CLERK_WEBHOOK_SECRET)
-    let evt: any
+    let evt: { type: string; data: any }
 
     try {
         evt = wh.verify(body, {
@@ -27,16 +27,18 @@ serve(async (req) => {
             "svix-timestamp": svix_timestamp,
             "svix-signature": svix_signature,
         })
-    } catch (err) {
+    } catch (_err) {
         return new Response('Error occured', {
             status: 400
         })
     }
 
+    /* 
     const supabaseAdmin = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
+    */
 
     const { id } = evt.data
     const eventType = evt.type

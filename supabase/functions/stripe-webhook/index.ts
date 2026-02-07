@@ -25,10 +25,12 @@ serve(async (req) => {
         return new Response(`Webhook Error: ${err.message}`, { status: 400 })
     }
 
+    /* 
     const supabaseAdmin = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
+    */
 
     // Manejar el evento
     switch (event.type) {
