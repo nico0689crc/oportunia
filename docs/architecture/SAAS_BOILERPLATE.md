@@ -72,5 +72,12 @@ supabase functions deploy stripe-webhook
 supabase secrets set STRIPE_SECRET_KEY=sk_active_...
 ```
 
+## 🛡️ Control de Calidad (Git Hooks)
+
+Para evitar subir código roto, el boilerplate utiliza **Husky** y **lint-staged**:
+
+- **Pre-commit**: Ejecuta `eslint` solo en los archivos modificados. Si hay errores, el commit se bloquea.
+- **Pre-push**: Ejecuta `lint`, `typecheck` y `build` completos. Garantiza que nada rompa el pipeline de CI.
+
 ---
 **Este documento es la base para futuros proyectos SaaS. Mantenerlo actualizado con cada nueva mejora estructural.**
