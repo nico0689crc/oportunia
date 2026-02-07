@@ -63,25 +63,25 @@ jobs:
         continue-on-error: true
 
       - name: Setup Supabase CLI
-        if: steps.check_changes.outputs.changes == 'true' || github.event_name == 'pull_request'
+        if: steps.check_changes.outputs.changes == 'true' || github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
         uses: supabase/setup-cli@v1
         with:
           version: latest
 
       - name: Validate SQL syntax
-        if: steps.check_changes.outputs.changes == 'true' || github.event_name == 'pull_request'
+        if: steps.check_changes.outputs.changes == 'true' || github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
         run: |
           supabase db lint
 
       - name: Deploy to Staging
-        if: github.event_name == 'pull_request' && (steps.check_changes.outputs.changes == 'true')
+        if: github.event_name == 'pull_request'
         run: |
           supabase db push --project-ref ${{ secrets.SUPABASE_STAGING_PROJECT_ID }} --password ${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Deploy to Production
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && (steps.check_changes.outputs.changes == 'true')
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
           supabase db push --project-ref ${{ secrets.SUPABASE_PRODUCTION_PROJECT_ID }} --password ${{ secrets.SUPABASE_PRODUCTION_DB_PASSWORD }}
         env:
