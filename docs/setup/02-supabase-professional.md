@@ -93,7 +93,7 @@ Esto ejecuta todas las migraciones pendientes en tu base de datos remota.
      https://xxxxxxxxxxxxx.supabase.co
      ```
    
-   - **Publishable key** (⚠️ NUEVA - usa esta, NO la "anon" key):
+   - **Publishable key** (⚠️ NUEVA - usa esta):
      ```
      sb_publishable_xxxxxxxxxxxxxxxxxxxxx...
      ```
@@ -109,7 +109,7 @@ Crea un archivo `.env.local` con las credenciales obtenidas:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://TU_PROJECT_ID.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_xxxxxxxxxxxxxxxxxxxxx...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxxxxxxxxxxxxxxxxxx...
 ```
 
 ---

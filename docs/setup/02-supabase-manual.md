@@ -50,9 +50,9 @@ También configura **Row Level Security (RLS)** para que cada usuario solo vea s
      https://xxxxxxxxxxxxx.supabase.co
      ```
    
-   - **anon/public key** (en la sección "Project API keys"):
+   - **Publishable key** (en la sección "API Keys"):
      ```
-     eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+     sb_publishable_xxxxxxxxxxxxxxxxxxxxx...
      ```
 
 ---
@@ -64,7 +64,7 @@ Abre tu archivo `.env.local` y actualiza estas líneas:
 ```env
 # Supabase (Database)
 NEXT_PUBLIC_SUPABASE_URL=https://TU_PROJECT_ID.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxxxxxxxxxxxxxxxxxx...
 ```
 
 ⚠️ **IMPORTANTE**: 
@@ -99,7 +99,7 @@ Después de reiniciar:
 
 **Error: "Invalid API key"**
 - Verifica que copiaste la key completa
-- Asegúrate de usar la `anon` key, no la `service_role`
+- Asegúrate de usar la `Publishable key`, no la `Secret key` (secret_role)
 
 **Error: "relation does not exist"**
 - El schema no se ejecutó correctamente
