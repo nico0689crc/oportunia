@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Key, Globe, Save, RefreshCw, CheckCircle2, BrainCircuit } from "lucide-react";
 import { saveAppSettingsAction, getAppSettingsAction } from "@/actions/admin";
 import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 
 interface MLConfig {
     clientId: string;
@@ -55,11 +56,21 @@ export default function AdminSettingsForm() {
 
     const handleSave = async () => {
         setSaving(true);
+        const promise = saveAppSettingsAction('ml_config', config);
+
+        toast.promise(promise, {
+            loading: 'Guardando configuración...',
+            success: (result) => {
+                if (result.success) return 'Configuración guardada correctamente';
+                throw new Error(result.error);
+            },
+            error: (err) => `Error: ${err.message || 'No se pudo guardar'}`
+        });
+
         try {
-            const result = await saveAppSettingsAction('ml_config', config);
-            if (result.success) {
-                // Éxito
-            }
+            await promise;
+        } catch (error) {
+            console.error("Save failed:", error);
         } finally {
             setSaving(false);
         }
