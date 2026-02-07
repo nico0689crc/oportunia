@@ -19,7 +19,9 @@
   "dependencies": {
     "@clerk/localizations": "^3.35.3",
     "@clerk/nextjs": "^6.37.3",
+    "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.2.2",
+    "@sentry/nextjs": "^10.38.0",
     "@supabase/supabase-js": "^2.95.3",
     "@tanstack/react-query": "^5.90.20",
     "@tanstack/react-query-devtools": "^5.91.3",
