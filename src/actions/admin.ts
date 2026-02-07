@@ -3,6 +3,13 @@
 import { isAdmin } from '@/lib/auth/roles';
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { encrypt } from '@/lib/encryption';
+
+interface MLConfig {
+    clientId: string;
+    clientSecret: string;
+    siteId: string;
+}
 
 /**
  * Guarda una configuración global en la base de datos
@@ -12,10 +19,34 @@ export async function saveAppSettingsAction(key: string, value: unknown) {
         throw new Error('No autorizado');
     }
 
+    let valueToSave = value;
+
+    // Lógica especial para ml_config (encriptación de secret)
+    if (key === 'ml_config') {
+        const newConfig = value as MLConfig;
+
+        // Si el cliente envía el placeholder, intentamos mantener el secreto anterior
+        if (newConfig.clientSecret === '••••••••••••••••') {
+            const { data: existing } = await supabaseAdmin
+                .from('app_settings')
+                .select('value')
+                .eq('key', 'ml_config')
+                .single();
+
+            if (existing && (existing.value as MLConfig).clientSecret) {
+                newConfig.clientSecret = (existing.value as MLConfig).clientSecret;
+            }
+        } else if (newConfig.clientSecret) {
+            // Es un secreto nuevo, lo encriptamos
+            newConfig.clientSecret = encrypt(newConfig.clientSecret);
+        }
+        valueToSave = newConfig;
+    }
+
     try {
         const { error } = await supabaseAdmin
             .from('app_settings')
-            .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+            .upsert({ key, value: valueToSave, updated_at: new Date().toISOString() }, { onConflict: 'key' });
 
         if (error) {
             console.error(`Error saving setting ${key}:`, error);

@@ -10,7 +10,6 @@ import { Key, Globe, Save, RefreshCw, CheckCircle2, BrainCircuit } from "lucide-
 import { saveAppSettingsAction, getAppSettingsAction } from "@/actions/admin";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { encrypt } from "@/lib/encryption";
 
 interface MLConfig {
     clientId: string;
@@ -62,14 +61,7 @@ export default function AdminSettingsForm() {
 
     const handleSave = async () => {
         setSaving(true);
-
-        // Prepare config for saving (encrypt secret if changed)
-        const configToSave = { ...config };
-        if (configToSave.clientSecret && configToSave.clientSecret !== '••••••••••••••••') {
-            configToSave.clientSecret = encrypt(configToSave.clientSecret);
-        }
-
-        const promise = saveAppSettingsAction('ml_config', configToSave);
+        const promise = saveAppSettingsAction('ml_config', config);
 
         toast.promise(promise, {
             loading: 'Guardando configuración...',
@@ -91,7 +83,8 @@ export default function AdminSettingsForm() {
 
     const handleConnect = () => {
         const clientId = config.clientId;
-        const redirectUri = encodeURIComponent(window.location.origin + "/api/auth/ml/callback");
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+        const redirectUri = encodeURIComponent(`${baseUrl}/api/auth/ml/callback`);
         const authUrl = `https://auth.mercadolibre.com.ar/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}`;
         window.location.href = authUrl;
     };
@@ -151,7 +144,35 @@ export default function AdminSettingsForm() {
                             </div>
                         </div>
 
-                        <div className="grid gap-6 md:grid-cols-3">
+                        <div className="grid gap-6 md:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label className="text-sm font-semibold flex items-center gap-2">
+                                    URL de Callback (Redirección)
+                                    <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Configurar en ML Dashboard</span>
+                                </Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        readOnly
+                                        value={typeof window !== 'undefined' ? `${window.location.origin}/api/auth/ml/callback` : ''}
+                                        className="bg-muted/50 font-mono text-xs border-dashed"
+                                    />
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="shrink-0"
+                                        onClick={() => {
+                                            const url = `${window.location.origin}/api/auth/ml/callback`;
+                                            navigator.clipboard.writeText(url);
+                                            toast.success('URL copiada al portapapeles');
+                                        }}
+                                    >
+                                        <Key className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground italic">
+                                    Copia esta URL y pégala en &quot;Redirect URI&quot; dentro de tu aplicación en el Mercado Libre Developers Dashboard.
+                                </p>
+                            </div>
                             <div className="space-y-2">
                                 <Label htmlFor="site_id" className="text-sm font-semibold">Site ID por Defecto</Label>
                                 <Input

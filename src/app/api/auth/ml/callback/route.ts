@@ -33,7 +33,8 @@ export async function GET(request: NextRequest) {
 
         const clientId = config.clientId;
         const clientSecret = decrypt(config.clientSecret);
-        const redirectUri = `${request.nextUrl.origin}/api/auth/ml/callback`;
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+        const redirectUri = `${baseUrl}/api/auth/ml/callback`;
 
         const response = await axios.post('https://api.mercadolibre.com/oauth/token', {
             grant_type: 'authorization_code',
