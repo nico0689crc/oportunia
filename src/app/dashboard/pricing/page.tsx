@@ -1,12 +1,24 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Zap, Shield, Target } from 'lucide-react';
-import { createCheckoutPreference } from '@/lib/actions/mercadopago';
+import { Check, Zap, Shield, Target, LucideIcon } from 'lucide-react';
+import { createSubscriptionPreference } from '@/lib/actions/mercadopago';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
-const plans = [
+interface Plan {
+    id: string;
+    tier: string;
+    name: string;
+    description: string;
+    price: number;
+    features: string[];
+    icon: LucideIcon;
+    buttonText: string;
+    highlight: boolean;
+}
+
+const plans: Plan[] = [
     {
         id: 'plan_free',
         tier: 'free',
