@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Key, Globe, Save, RefreshCw, CheckCircle2, BrainCircuit } from "lucide-react";
 import { saveAppSettingsAction, getAppSettingsAction, getMlAuthUrlAction } from "@/actions/admin";
@@ -42,17 +43,24 @@ export default function AdminSettingsForm() {
         clientSecret: "",
         publicKey: ""
     });
+    const [mpMode, setMpMode] = useState<'production' | 'test'>('production');
+    const [mpTestConfig, setMpTestConfig] = useState({
+        accessToken: "",
+        publicKey: ""
+    });
     const [mlAuthStatus, setMlAuthStatus] = useState<AuthStatus | null>(null);
     const [mpAuthStatus, setMpAuthStatus] = useState<AuthStatus | null>(null);
 
     const loadSettings = useCallback(async () => {
         setLoading(true);
         try {
-            const [savedMlConfig, savedMpConfig, savedMlAuth, savedMpAuth] = await Promise.all([
+            const [savedMlConfig, savedMpConfig, savedMlAuth, savedMpAuth, savedMpMode, savedMpTestConfig] = await Promise.all([
                 getAppSettingsAction<MLConfig>('ml_config'),
                 getAppSettingsAction<MPConfig>('mp_config'),
                 getAppSettingsAction<AuthStatus>('ml_auth_tokens'),
-                getAppSettingsAction<AuthStatus>('mp_auth_tokens')
+                getAppSettingsAction<AuthStatus>('mp_auth_tokens'),
+                getAppSettingsAction<'production' | 'test'>('mp_mode'),
+                getAppSettingsAction<{ accessToken: string; publicKey: string }>('mp_test_config')
             ]);
 
             if (savedMlConfig) {
@@ -69,6 +77,13 @@ export default function AdminSettingsForm() {
             }
             if (savedMlAuth) setMlAuthStatus(savedMlAuth);
             if (savedMpAuth) setMpAuthStatus(savedMpAuth);
+            if (savedMpMode) setMpMode(savedMpMode);
+            if (savedMpTestConfig) {
+                setMpTestConfig({
+                    accessToken: savedMpTestConfig.accessToken ? '••••••••••••••••' : '',
+                    publicKey: savedMpTestConfig.publicKey || ''
+                });
+            }
         } catch (error) {
             console.error("Failed to load settings:", error);
         } finally {
@@ -97,6 +112,32 @@ export default function AdminSettingsForm() {
             await promise;
         } catch (error: unknown) {
             console.error("Save failed:", error);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSaveMp = async () => {
+        setSaving(true);
+        try {
+            // Save mode first
+            await saveAppSettingsAction('mp_mode', mpMode);
+
+            if (mpMode === 'test') {
+                // Save test config (encrypt access token, public key is plain)
+                const { encrypt } = await import('@/lib/encryption');
+                await saveAppSettingsAction('mp_test_config', {
+                    accessToken: mpTestConfig.accessToken.startsWith('••') ? mpTestConfig.accessToken : encrypt(mpTestConfig.accessToken),
+                    publicKey: mpTestConfig.publicKey
+                });
+                toast.success('Configuración de Test guardada correctamente');
+            } else {
+                // Save production config (existing flow)
+                await handleSave('mp_config', mpConfig);
+            }
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Error al guardar';
+            toast.error(message);
         } finally {
             setSaving(false);
         }
@@ -225,72 +266,142 @@ export default function AdminSettingsForm() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <div className="grid gap-6 md:grid-cols-2">
-                            <div className="space-y-2">
-                                <Label htmlFor="mp_client_id" className="text-sm font-semibold">Client ID</Label>
-                                <Input
-                                    id="mp_client_id"
-                                    value={mpConfig.clientId}
-                                    onChange={(e) => setMpConfig({ ...mpConfig, clientId: e.target.value })}
-                                    placeholder="ID de tu aplicación MP"
-                                    className="border-primary/20 focus-visible:ring-primary"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="mp_client_secret" className="text-sm font-semibold">Client Secret</Label>
-                                <Input
-                                    id="mp_client_secret"
-                                    type="password"
-                                    value={mpConfig.clientSecret}
-                                    onChange={(e) => setMpConfig({ ...mpConfig, clientSecret: e.target.value })}
-                                    placeholder="••••••••••••••••"
-                                    className="border-primary/20 focus-visible:ring-primary"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid gap-6 md:grid-cols-2">
-                            <div className="space-y-2">
-                                <Label htmlFor="mp_public_key" className="text-sm font-semibold">Public Key</Label>
-                                <Input
-                                    id="mp_public_key"
-                                    value={mpConfig.publicKey}
-                                    onChange={(e) => setMpConfig({ ...mpConfig, publicKey: e.target.value })}
-                                    placeholder="APP_USR-..."
-                                    className="border-primary/20 focus-visible:ring-primary"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-semibold">URL de Webhook (MP Notification)</Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        readOnly
-                                        value="https://<tusubdominio>.supabase.co/functions/v1/mercadopago-webhook"
-                                        className="bg-muted/50 font-mono text-xs border-dashed"
-                                    />
-                                </div>
-                                <p className="text-[10px] text-muted-foreground italic">
-                                    Configura esta URL en el panel de Mercado Pago Developers bajo &quot;Notificaciones Webhooks&quot;.
+                        {/* Mode Toggle */}
+                        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
+                            <div className="space-y-0.5">
+                                <Label className="text-base font-semibold">Modo de Operación</Label>
+                                <p className="text-sm text-muted-foreground">
+                                    {mpMode === 'production' ? 'Producción (OAuth con refresh tokens)' : 'Pruebas (Sandbox con token estático)'}
                                 </p>
                             </div>
+                            <div className="flex items-center gap-3">
+                                <span className={`text-sm font-medium ${mpMode === 'production' ? 'text-muted-foreground' : 'text-primary'}`}>
+                                    Test
+                                </span>
+                                <Switch
+                                    checked={mpMode === 'production'}
+                                    onCheckedChange={(checked) => setMpMode(checked ? 'production' : 'test')}
+                                />
+                                <span className={`text-sm font-medium ${mpMode === 'production' ? 'text-primary' : 'text-muted-foreground'}`}>
+                                    Producción
+                                </span>
+                            </div>
                         </div>
 
+                        {/* Production Mode Fields */}
+                        {mpMode === 'production' && (
+                            <>
+                                <div className="grid gap-6 md:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="mp_client_id" className="text-sm font-semibold">Client ID</Label>
+                                        <Input
+                                            id="mp_client_id"
+                                            value={mpConfig.clientId}
+                                            onChange={(e) => setMpConfig({ ...mpConfig, clientId: e.target.value })}
+                                            placeholder="ID de tu aplicación MP"
+                                            className="border-primary/20 focus-visible:ring-primary"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="mp_client_secret" className="text-sm font-semibold">Client Secret</Label>
+                                        <Input
+                                            id="mp_client_secret"
+                                            type="password"
+                                            value={mpConfig.clientSecret}
+                                            onChange={(e) => setMpConfig({ ...mpConfig, clientSecret: e.target.value })}
+                                            placeholder="••••••••••••••••"
+                                            className="border-primary/20 focus-visible:ring-primary"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid gap-6 md:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="mp_public_key" className="text-sm font-semibold">Public Key</Label>
+                                        <Input
+                                            id="mp_public_key"
+                                            value={mpConfig.publicKey}
+                                            onChange={(e) => setMpConfig({ ...mpConfig, publicKey: e.target.value })}
+                                            placeholder="APP_USR-..."
+                                            className="border-primary/20 focus-visible:ring-primary"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-semibold">URL de Webhook (MP Notification)</Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                readOnly
+                                                value="https://<tusubdominio>.supabase.co/functions/v1/mercadopago-webhook"
+                                                className="bg-muted/50 font-mono text-xs border-dashed"
+                                            />
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground italic">
+                                            Configura esta URL en el panel de Mercado Pago Developers bajo &quot;Notificaciones Webhooks&quot;.
+                                        </p>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {/* Test Mode Fields */}
+                        {mpMode === 'test' && (
+                            <>
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="mp_test_access_token" className="text-sm font-semibold">Access Token de Test</Label>
+                                        <Input
+                                            id="mp_test_access_token"
+                                            type="password"
+                                            value={mpTestConfig.accessToken}
+                                            onChange={(e) => setMpTestConfig({ ...mpTestConfig, accessToken: e.target.value })}
+                                            placeholder="TEST-..."
+                                            className="border-primary/20 focus-visible:ring-primary font-mono text-xs"
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Obtén este token desde: <strong>Mercado Pago Dashboard → Tus integraciones → Credenciales de prueba → Access Token</strong>
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="mp_test_public_key" className="text-sm font-semibold">Public Key de Test</Label>
+                                        <Input
+                                            id="mp_test_public_key"
+                                            value={mpTestConfig.publicKey}
+                                            onChange={(e) => setMpTestConfig({ ...mpTestConfig, publicKey: e.target.value })}
+                                            placeholder="TEST-..."
+                                            className="border-primary/20 focus-visible:ring-primary font-mono text-xs"
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Obtén esta clave desde: <strong>Mercado Pago Dashboard → Tus integraciones → Credenciales de prueba → Public Key</strong>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                                    <p className="text-sm text-amber-800">
+                                        <strong>⚠️ Modo Test:</strong> Solo puedes usar usuarios de prueba de Mercado Pago. No puedes mezclar credenciales de test con usuarios reales.
+                                    </p>
+                                </div>
+                            </>
+                        )}
+
                         <div className="pt-4 flex flex-wrap gap-4 border-t">
-                            <Button className="font-bold px-8 shadow-md" onClick={() => handleSave('mp_config', mpConfig)} disabled={saving}>
+                            <Button className="font-bold px-8 shadow-md" onClick={handleSaveMp} disabled={saving}>
                                 {saving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                                 Guardar Mercado Pago
                             </Button>
-                            <Button
-                                variant="outline"
-                                className="border-primary text-primary"
-                                onClick={() => handleConnect('mp')}
-                                disabled={!mpConfig.clientId}
-                            >
-                                <RefreshCw className="mr-2 h-4 w-4" /> Sincronizar Admin MP
-                            </Button>
+                            {mpMode === 'production' && (
+                                <Button
+                                    variant="outline"
+                                    className="border-primary text-primary"
+                                    onClick={() => handleConnect('mp')}
+                                    disabled={!mpConfig.clientId}
+                                >
+                                    <RefreshCw className="mr-2 h-4 w-4" /> Sincronizar Admin MP
+                                </Button>
+                            )}
                         </div>
 
-                        {mpAuthStatus ? (
+                        {mpAuthStatus && mpMode === 'production' ? (
                             <div className="flex items-center gap-4 p-4 bg-green-50 border border-green-200 rounded-xl">
                                 <CheckCircle2 className="h-6 w-6 text-green-600" />
                                 <div>
@@ -298,12 +409,20 @@ export default function AdminSettingsForm() {
                                     <p className="text-xs text-green-700">Token válido hasta: {new Date(mpAuthStatus.expires_at).toLocaleString()}</p>
                                 </div>
                             </div>
-                        ) : (
+                        ) : mpMode === 'production' ? (
                             <div className="flex items-center gap-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
                                 <Key className="h-6 w-6 text-amber-600" />
                                 <div>
                                     <p className="text-sm font-bold text-amber-900">Requiere Sincronización MP</p>
                                     <p className="text-xs text-amber-700">Debes conectar tu cuenta para habilitar el procesamiento de pagos dinámico.</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                                <CheckCircle2 className="h-6 w-6 text-blue-600" />
+                                <div>
+                                    <p className="text-sm font-bold text-blue-900">Modo Test Activo</p>
+                                    <p className="text-xs text-blue-700">Usando credenciales de sandbox. Recuerda usar usuarios de prueba.</p>
                                 </div>
                             </div>
                         )}

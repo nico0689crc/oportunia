@@ -24,15 +24,47 @@ export async function getValidMLToken(): Promise<string> {
 
 /**
  * Gets a valid Mercado Pago Access Token for Billing operations (Subscriptions, etc.)
+ * Supports both Production (OAuth with refresh) and Test (static token) modes.
  */
 export async function getValidMPToken(): Promise<string> {
+    // Check if we're in test or production mode
+    const mode = await getAppSettingsAction<string>('mp_mode');
+
+    if (mode === 'test') {
+        // Test mode: return static access token
+        const testConfig = await getAppSettingsAction<{ accessToken: string; publicKey: string }>('mp_test_config');
+        if (!testConfig?.accessToken) {
+            throw new Error('MP_TEST_TOKEN_MISSING: Please configure Test Access Token in Admin Settings.');
+        }
+        try {
+            return decrypt(testConfig.accessToken);
+        } catch (error) {
+            console.error('Failed to decrypt test access token:', error);
+            throw new Error('CORRUPTED_TEST_TOKEN: Failed to decrypt test access token.');
+        }
+    }
+
+    // Production mode: use OAuth refresh flow
     return getValidToken('mp_config', 'mp_auth_tokens');
 }
 
 /**
  * Gets the Public Key for Mercado Pago frontend bricks.
+ * Returns test or production key based on current mode.
  */
 export async function getMPPublicKey(): Promise<string> {
+    const mode = await getAppSettingsAction<string>('mp_mode');
+
+    if (mode === 'test') {
+        // Test mode: return test public key
+        const testConfig = await getAppSettingsAction<{ accessToken: string; publicKey: string }>('mp_test_config');
+        if (!testConfig?.publicKey) {
+            throw new Error('MP_TEST_PUBLIC_KEY_MISSING: Please configure Test Public Key in Admin Settings.');
+        }
+        return testConfig.publicKey; // Test public keys are not encrypted
+    }
+
+    // Production mode: return production public key
     const config = await getAppSettingsAction<MPConfig>('mp_config');
     if (!config?.publicKey) {
         throw new Error('MP_PUBLIC_KEY_MISSING: Please configure Mercado Pago Public Key in Admin Settings.');
