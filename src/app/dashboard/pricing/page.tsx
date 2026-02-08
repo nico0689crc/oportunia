@@ -18,7 +18,11 @@ export default function PricingPage() {
 
         try {
             console.log('[Pricing] Creating subscription preference for:', plan.name);
-            const result = await createSubscriptionPreference(plan);
+            const result = await createSubscriptionPreference({
+                name: plan.name,
+                price: plan.price,
+                tier: plan.tier
+            });
 
             console.log('[Pricing] Redirecting to Mercado Pago:', result.url);
 
