@@ -76,8 +76,6 @@ export class MlAuth {
         const apiBaseUrl = platform === 'ml' ? 'https://api.mercadolibre.com' : 'https://api.mercadopago.com';
         const url = `${apiBaseUrl}/oauth/token`;
 
-        console.log(`[MlAuth] Exchanging code on ${platform} at ${url}`);
-
         const params = new URLSearchParams({
             grant_type: 'authorization_code',
             client_id: clientId,
@@ -104,8 +102,6 @@ export class MlAuth {
     static async refreshToken(clientId: string, clientSecret: string, refreshToken: string, platform: 'ml' | 'mp' = 'ml'): Promise<MlTokenResponse> {
         const apiBaseUrl = platform === 'ml' ? 'https://api.mercadolibre.com' : 'https://api.mercadopago.com';
         const url = `${apiBaseUrl}/oauth/token`;
-
-        console.log(`[MlAuth] Refreshing tokens on ${platform} at ${url}`);
 
         const params = new URLSearchParams({
             grant_type: 'refresh_token',

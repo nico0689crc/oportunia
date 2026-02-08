@@ -54,14 +54,6 @@ export async function GET(request: NextRequest) {
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
         const redirectUri = `${baseUrl}/api/auth/ml/callback`;
 
-        console.log(`[Callback] Exchanging code for ${platform} tokens...`, {
-            configKey,
-            clientIdPrefix: clientId.substring(0, 5) + '...',
-            redirectUri,
-            hasVerifier: !!storedVerifier,
-            secretLength: decryptedSecret.length
-        });
-
         const tokens = await MlAuth.exchangeCodeForToken(
             clientId,
             decryptedSecret,
@@ -97,17 +89,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL('/admin/settings?success=connected', request.url));
     } catch (err: unknown) {
         console.error('Error in ML Auth Callback:', err);
-        let message = 'Error desconocido';
-
-        // Dynamic import axios to check for axios errors without Top Level import
-        const axios = (await import('axios')).default;
-        if (axios.isAxiosError(err) && err.response) {
-            console.error('Mercado Pago API Error Body:', JSON.stringify(err.response.data, null, 2));
-            message = err.response.data.message || err.response.data.error || message;
-        } else if (err instanceof Error) {
-            message = err.message;
-        }
-
+        const message = err instanceof Error ? err.message : 'Error desconocido';
         return NextResponse.redirect(new URL(`/admin/settings?error=auth_failed&details=${encodeURIComponent(message)}`, request.url));
     }
 }
