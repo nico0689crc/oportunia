@@ -31,17 +31,17 @@ export async function getValidMPToken(): Promise<string> {
     const mode = await getAppSettingsAction<string>('mp_mode');
 
     if (mode === 'test') {
-        // Test mode: return static access token
+        // Test mode: return static access token (stored unencrypted)
         const testConfig = await getAppSettingsAction<{ accessToken: string; publicKey: string }>('mp_test_config');
         if (!testConfig?.accessToken) {
             throw new Error('MP_TEST_TOKEN_MISSING: Please configure Test Access Token in Admin Settings.');
         }
-        try {
-            return decrypt(testConfig.accessToken);
-        } catch (error) {
-            console.error('Failed to decrypt test access token:', error);
-            throw new Error('CORRUPTED_TEST_TOKEN: Failed to decrypt test access token.');
-        }
+
+        console.log('[MP Admin Auth] Returning test token (unencrypted). Length:', testConfig.accessToken?.length);
+
+        // Test tokens are stored unencrypted (see admin.ts line 58-60)
+        // Just return it directly
+        return testConfig.accessToken;
     }
 
     // Production mode: use OAuth refresh flow

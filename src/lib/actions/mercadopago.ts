@@ -1,7 +1,7 @@
 'use server';
 
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { MercadoPagoConfig, PreApproval } from 'mercadopago';
+import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { getValidMPToken } from '@/lib/mercadopago/admin-auth';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
@@ -29,61 +29,77 @@ export async function createSubscriptionPreference(plan: {
         console.warn('[MP Warning] Failed to fetch currentUser details:', err);
     }
 
-    const payerEmail = (sessionClaims?.email as string) || 'test_user_123@test.com';
-
+    console.log('--- MP DEBUG: Entering createSubscriptionPreference ---');
     console.log('[MP Step] Getting valid MP token...');
-    let accessToken;
+
+    let accessToken: string;
     try {
         accessToken = await getValidMPToken();
         console.log('[MP DEBUG] Active Access Token Prefix:', accessToken ? accessToken.substring(0, 10) + '...' : 'UNDEFINED');
-    } catch (tokenError) {
+    } catch (tokenError: unknown) {
         console.error('[MP Critical] Failed to get Access Token:', tokenError);
-        throw new Error('Error de configuración de pago (Token)');
+        const errorMessage = tokenError instanceof Error ? tokenError.message : 'Error desconocido';
+        throw new Error('Error de configuración de pago (Token): ' + errorMessage);
     }
 
-    const mongoClient = new MercadoPagoConfig({
+    // Check if we're in test mode (using mp_mode setting, not token prefix)
+    const { getAppSettingsAction } = await import('@/actions/admin');
+    const mpMode = await getAppSettingsAction<string>('mp_mode');
+    const isTestMode = mpMode === 'test';
+    const siteId = process.env.ML_SITE_ID || 'MLA';
+
+    const client = new MercadoPagoConfig({
         accessToken: accessToken,
     });
 
-    const preapproval = new PreApproval(mongoClient);
+    const preference = new Preference(client);
 
     try {
-        console.log('[MP Preference] Starting creation for:', {
-            planName: plan.name,
-            planTier: plan.tier,
-            userId,
-            payerEmail
-        });
+        // In test mode, we use a unique test email to avoid collisions and mismatch
+        const testPayerEmail = `test_buyer_${userId.substring(userId.length - 5)}_${siteId.toLowerCase()}@testuser.com`;
+        const finalPayerEmail = isTestMode ? testPayerEmail : (sessionClaims?.email as string);
 
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const backUrl = `${appUrl}/dashboard?subscription=success`;
-
-        console.log('[MP Preference] App URL:', appUrl);
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const preferenceBody: Record<string, any> = {
-            reason: `Oportunia - Plan ${plan.name}`,
-            auto_recurring: {
-                frequency: 1,
-                frequency_type: 'months',
-                transaction_amount: plan.price,
-                currency_id: 'ARS',
+            items: [
+                {
+                    title: `Suscripción Oportunia - Plan ${plan.name}`,
+                    description: `Suscripción mensual al plan ${plan.name}`,
+                    quantity: 1,
+                    unit_price: plan.price,
+                    currency_id: siteId === 'MLB' ? 'BRL' : 'ARS',
+                }
+            ],
+            payer: {
+                email: finalPayerEmail,
             },
-            // Esto aparece en el resumen de la tarjeta para evitar rechazos por "desconocido"
-            statement_descriptor: "OPORTUNIA",
-            external_reference: `${userId}|${plan.tier}`,
-            payer_email: payerEmail,
-            payer_first_name: userDetails.firstName,
-            payer_last_name: userDetails.lastName,
-            status: 'pending',
-            back_url: backUrl,
+            back_urls: {
+                success: `${appUrl}/dashboard?subscription=success`,
+                failure: `${appUrl}/dashboard/pricing?error=checkout_failed`,
+                pending: `${appUrl}/dashboard?subscription=pending`,
+            },
+            auto_return: 'approved',
+            external_reference: `${userId}|${plan.tier}|subscription`,
+            metadata: {
+                subscription: true,
+                plan_tier: plan.tier,
+                user_id: userId,
+            },
         };
 
-        console.log('[MP Preference] Preference body prepared with back_url:', backUrl);
+        // If not in test mode, we can add more specific payer details
+        if (!isTestMode && userDetails.firstName && userDetails.lastName) {
+            preferenceBody.payer.name = userDetails.firstName;
+            preferenceBody.payer.surname = userDetails.lastName;
+        }
 
-        const result = await preapproval.create({ body: preferenceBody });
+        console.log('[MP Preference] Final Body:', JSON.stringify(preferenceBody, null, 2));
 
-        console.log('[MP Preference] PreApproval created successfully:', result.id);
+        const result = await preference.create({ body: preferenceBody });
+
+        console.log('[MP Preference] Preference created successfully:', result.id);
 
         // Guardamos el estado pendiente en la base de datos para mostrar el banner
         console.log('[MP Preference] Upserting pending subscription record for:', userId);
@@ -106,18 +122,30 @@ export async function createSubscriptionPreference(plan: {
         return { url: result.init_point };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-        console.error('Error creating MP subscription:', error);
+        console.error('=== FULL MP ERROR OBJECT ===');
+        console.error(JSON.stringify(error, null, 2));
+        console.error('=== ERROR KEYS ===');
+        console.error(Object.keys(error));
 
-        let errorMessage = 'Error desconocido';
-        if (error instanceof Error) {
-            errorMessage = error.message;
+        if (error?.cause) {
+            console.error('=== ERROR CAUSE ===');
+            console.error(JSON.stringify(error.cause, null, 2));
         }
 
         if (error?.response) {
-            console.error('MP API Error Response:', JSON.stringify(error.response, null, 2));
+            console.error('=== ERROR RESPONSE ===');
+            console.error(JSON.stringify(error.response, null, 2));
+        }
+
+        let errorMessage = error?.message || (typeof error === 'string' ? error : 'Error desconocido');
+
+        // Si el error es un objeto de respuesta de MP (que a veces el SDK devuelve así)
+        if (error?.status && error?.message) {
+            errorMessage = `${error.message} (Status: ${error.status})`;
+        }
+
+        if (error?.response) {
             errorMessage += ` (API: ${JSON.stringify(error.response.data || error.response)})`;
-        } else if (error?.cause) {
-            console.error('MP API Error Cause:', JSON.stringify(error.cause, null, 2));
         }
 
         throw new Error('Error al iniciar el proceso de suscripción: ' + errorMessage);

@@ -55,8 +55,8 @@ export async function saveAppSettingsAction(key: string, value: unknown) {
                 testConfig.accessToken = (existing.value as { accessToken?: string }).accessToken;
             }
         } else if (testConfig.accessToken) {
-            // Es un token nuevo, lo encriptamos
-            testConfig.accessToken = encrypt(testConfig.accessToken);
+            // Ya no encriptamos el token de prueba para evitar líos en sandbox
+            // testConfig.accessToken = encrypt(testConfig.accessToken);
         }
         valueToSave = testConfig as Record<string, unknown>;
     }

@@ -363,10 +363,37 @@ export default function AdminSettingsForm() {
                                     </div>
                                 </div>
 
-                                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                                    <p className="text-sm text-amber-800">
-                                        <strong>⚠️ Modo Test:</strong> Solo puedes usar usuarios de prueba de Mercado Pago. No puedes mezclar credenciales de test con usuarios reales.
-                                    </p>
+                                <div className="space-y-3 p-4 bg-amber-50 border-2 border-amber-300 rounded-xl">
+                                    <div className="flex items-start gap-3">
+                                        <span className="text-2xl">⚠️</span>
+                                        <div className="space-y-2">
+                                            <p className="text-sm font-bold text-amber-900">
+                                                Modo Test: Requiere Usuarios de Prueba
+                                            </p>
+                                            <p className="text-xs text-amber-800 leading-relaxed">
+                                                En modo sandbox, <strong>NO puedes usar tu cuenta real de Mercado Pago</strong>.
+                                                Debes usar usuarios de prueba y tarjetas de prueba para realizar pagos.
+                                            </p>
+                                            <div className="text-xs text-amber-800 space-y-1 mt-2">
+                                                <p className="font-semibold">Para probar suscripciones:</p>
+                                                <ol className="list-decimal list-inside space-y-1 ml-2">
+                                                    <li>Crea usuarios de prueba en el Dashboard de Mercado Pago</li>
+                                                    <li>Usa esos usuarios para iniciar sesión en el checkout</li>
+                                                    <li>Paga con tarjetas de prueba (ej: 5031 7557 3453 0604)</li>
+                                                </ol>
+                                            </div>
+                                            <p className="text-xs text-amber-700 mt-2">
+                                                📖 <a
+                                                    href="https://www.mercadopago.com.ar/developers/es/docs/checkout-pro/additional-content/test-accounts"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="underline hover:text-amber-900 font-medium"
+                                                >
+                                                    Ver guía oficial de usuarios de prueba
+                                                </a>
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             </>
                         )}

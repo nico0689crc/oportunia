@@ -52,14 +52,17 @@ export default async function BillingRedirectPage({ searchParams }: Props) {
 
     console.log('[BillingRedirect] Creating subscription preference for plan:', plan.name);
 
+    let redirectUrl: string | null = null;
     try {
         const { url } = await createSubscriptionPreference(plan);
-        if (url) {
-            redirect(url);
-        }
+        redirectUrl = url || null;
     } catch (error) {
         console.error('Error in automated billing redirect:', error);
         redirect('/dashboard/pricing?error=checkout_failed');
+    }
+
+    if (redirectUrl) {
+        redirect(redirectUrl);
     }
 
     return (
