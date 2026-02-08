@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@clerk/nextjs/server';
+import { currentUser } from '@clerk/nextjs/server';
 import { MercadoPagoConfig, PreApproval } from 'mercadopago';
 import { getValidMPToken } from '@/lib/mercadopago/admin-auth';
 import { supabaseAdmin } from '@/lib/supabase/admin';
@@ -10,13 +10,14 @@ export async function createSubscriptionPreference(plan: {
     price: number;
     tier: string;
 }) {
-    const { userId, sessionClaims } = await auth();
+    const user = await currentUser();
 
-    if (!userId) {
+    if (!user) {
         throw new Error('No estás autenticado');
     }
 
-    const payerEmail = (sessionClaims?.email as string) || 'test_user_123@test.com';
+    const userId = user.id;
+    const payerEmail = user.emailAddresses[0]?.emailAddress || 'test_user_123@test.com';
 
     const accessToken = await getValidMPToken();
     const mongoClient = new MercadoPagoConfig({
@@ -50,18 +51,17 @@ export async function createSubscriptionPreference(plan: {
                 transaction_amount: plan.price,
                 currency_id: 'ARS',
             },
+            // Esto aparece en el resumen de la tarjeta para evitar rechazos por "desconocido"
+            statement_descriptor: "OPORTUNIA",
             external_reference: `${userId}|${plan.tier}`,
             payer_email: payerEmail,
+            payer_first_name: user.firstName || undefined,
+            payer_last_name: user.lastName || undefined,
             status: 'pending',
+            back_url: isProduction ? backUrl : undefined,
         };
 
-        // Solo agregamos back_url si estamos en producción
-        if (isProduction) {
-            preferenceBody.back_url = backUrl;
-            console.log('[MP Preference] Including back_url:', backUrl);
-        } else {
-            console.log('[MP Preference] Skipping back_url (localhost not supported by MP)');
-        }
+        console.log('[MP Preference] Preference body prepared with back_url:', isProduction ? backUrl : 'None (Localhost)');
 
         const result = await preapproval.create({ body: preferenceBody });
 
