@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Search, TrendingUp, Sparkles } from "lucide-react";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { PLANS } from "@/lib/subscriptions";
+import { PLANS } from "@/lib/plans";
 import { Check } from "lucide-react";
 
 export default async function HomePage() {

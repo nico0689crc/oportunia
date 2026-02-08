@@ -5,7 +5,7 @@ import { Check } from 'lucide-react';
 import { PaymentModal } from '@/components/subscriptions/payment-modal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { PLANS, type Plan } from '@/lib/subscriptions';
+import { PLANS, type Plan } from '@/lib/plans';
 
 export default function PricingPage() {
     const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
