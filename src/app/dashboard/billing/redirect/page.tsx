@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
 import { createSubscriptionPreference } from '@/lib/actions/mercadopago';
-import { PLANS } from '@/lib/subscriptions';
+import { PLANS, getSubscriptionData } from '@/lib/subscriptions';
 import { Loader2, ShieldCheck } from 'lucide-react';
 
 interface Props {
