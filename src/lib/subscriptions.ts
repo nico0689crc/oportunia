@@ -99,13 +99,19 @@ export async function getSubscriptionData(userId: string): Promise<SubscriptionD
 
 export async function getUserTier(userId: string): Promise<SubscriptionTier> {
     const data = await getSubscriptionData(userId);
+    // Solo devolvemos el tier si está activo o si es el plan gratuito
+    if (data.tier !== 'free' && data.status !== 'active') {
+        return 'free';
+    }
     return data.tier;
 }
 
 export async function checkAndIncrementUsage(userId: string, feature: keyof typeof PLAN_LIMITS['free']): Promise<{ allowed: boolean; remaining: number }> {
     const sub = await getSubscriptionData(userId);
 
-    const limit = PLAN_LIMITS[sub.tier as keyof typeof PLAN_LIMITS][feature];
+    // Si no está activo y no es free, forzamos límites de free
+    const effectiveTier = (sub.tier !== 'free' && sub.status !== 'active') ? 'free' : sub.tier;
+    const limit = PLAN_LIMITS[effectiveTier as keyof typeof PLAN_LIMITS][feature];
 
     // Si el límite es Infinity, siempre permitido
     if (limit === Infinity) return { allowed: true, remaining: 999 };

@@ -3,6 +3,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { MercadoPagoConfig, PreApproval } from 'mercadopago';
 import { getValidMPToken } from '@/lib/mercadopago/admin-auth';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
 export async function createSubscriptionPreference(plan: {
     name: string;
@@ -44,6 +45,18 @@ export async function createSubscriptionPreference(plan: {
         });
 
         console.log('MP PreApproval created successfully:', result.id);
+
+        // Guardamos el estado pendiente en la base de datos para mostrar el banner
+        await supabaseAdmin
+            .from('subscriptions')
+            .upsert({
+                user_id: userId,
+                tier: plan.tier,
+                status: 'pending',
+                mp_subscription_id: result.id,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
+
         return { url: result.init_point };
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Error desconocido';

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
 import { createSubscriptionPreference } from '@/lib/actions/mercadopago';
 import { PLANS } from '@/lib/subscriptions';
+import { Loader2, ShieldCheck } from 'lucide-react';
 
 interface Props {
     searchParams: { [key: string]: string | string[] | undefined };
@@ -31,10 +32,27 @@ export default async function BillingRedirectPage({ searchParams }: Props) {
     }
 
     return (
-        <div className="flex min-h-screen items-center justify-center">
-            <div className="text-center">
-                <h2 className="text-xl font-semibold mb-2">Preparando tu suscripción...</h2>
-                <p className="text-muted-foreground">Te estamos redirigiendo a Mercado Pago para completar el proceso.</p>
+        <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-white to-muted/50 p-4">
+            <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center border border-slate-100 animate-in fade-in zoom-in duration-500">
+                <div className="relative w-20 h-20 mx-auto mb-6">
+                    <div className="absolute inset-0 bg-primary/10 rounded-full animate-ping"></div>
+                    <div className="relative flex items-center justify-center w-20 h-20 bg-primary/5 rounded-full border-2 border-primary/20">
+                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                    </div>
+                </div>
+
+                <h2 className="text-2xl font-bold mb-2 text-slate-900 tracking-tight">Preparando tu suscripción</h2>
+                <p className="text-slate-500 mb-6">
+                    Te estamos redirigiendo a la pasarela de pago segura de <strong>Mercado Pago</strong> para el plan <span className="text-primary font-semibold">{plan.name}</span>.
+                </p>
+
+                <div className="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 uppercase tracking-widest">
+                    <ShieldCheck className="h-4 w-4" /> Pago 100% Seguro
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-slate-50">
+                    <p className="text-[10px] text-slate-400 italic">No cierres esta ventana, serás redirigido en segundos...</p>
+                </div>
             </div>
         </div>
     );
