@@ -65,6 +65,7 @@ export async function createSubscriptionPreference(plan: {
         const preferenceBody: Record<string, any> = {
             items: [
                 {
+                    id: plan.tier,
                     title: `Suscripción Oportunia - Plan ${plan.name}`,
                     description: `Suscripción mensual al plan ${plan.name}`,
                     quantity: 1,
@@ -97,7 +98,8 @@ export async function createSubscriptionPreference(plan: {
 
         console.log('[MP Preference] Final Body:', JSON.stringify(preferenceBody, null, 2));
 
-        const result = await preference.create({ body: preferenceBody });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const result = await preference.create({ body: preferenceBody as any });
 
         console.log('[MP Preference] Preference created successfully:', result.id);
 
