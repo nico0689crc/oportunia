@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { createSubscriptionPreference } from '@/lib/actions/mercadopago';
 import { PLANS, getSubscriptionData } from '@/lib/subscriptions';
 import { Loader2, ShieldCheck } from 'lucide-react';
