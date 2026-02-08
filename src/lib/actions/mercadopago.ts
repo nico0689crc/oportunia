@@ -77,9 +77,9 @@ export async function createSubscriptionPreference(plan: {
                 email: finalPayerEmail,
             },
             back_urls: {
-                success: `${appUrl}/dashboard?subscription=success`,
+                success: `${appUrl}/dashboard/billing/success`,
                 failure: `${appUrl}/dashboard/pricing?error=checkout_failed`,
-                pending: `${appUrl}/dashboard?subscription=pending`,
+                pending: `${appUrl}/dashboard/billing/success`,
             },
             auto_return: 'approved',
             external_reference: `${userId}|${plan.tier}|subscription`,
