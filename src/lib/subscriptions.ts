@@ -1,9 +1,9 @@
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { SubscriptionTier, PLAN_LIMITS } from '@/lib/plans.ts';
+import { SubscriptionTier, PLAN_LIMITS } from '@/lib/plans';
 
 // Re-export types for backward compatibility if needed, though direct import is preferred
-export type { SubscriptionTier } from '@/lib/plans.ts';
-export { PLANS, PLAN_LIMITS } from '@/lib/plans.ts';
+export type { SubscriptionTier } from '@/lib/plans';
+export { PLANS, PLAN_LIMITS } from '@/lib/plans';
 
 export interface SubscriptionData {
     tier: SubscriptionTier;
