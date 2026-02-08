@@ -132,28 +132,59 @@ export async function createSubscriptionAction(
     try {
         console.log('Procesando Suscripción API para:', { planName: plan.name, userId, cardTokenId });
 
-        const result = await preapproval.create({
-            body: {
-                reason: `Oportunia - Plan ${plan.name}`,
-                auto_recurring: {
-                    frequency: 1,
-                    frequency_type: 'months',
-                    transaction_amount: plan.price,
-                    currency_id: 'ARS',
-                },
-                back_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?subscription=success`,
-                external_reference: `${userId}|${plan.tier}`,
-                payer_email: payerEmail,
-                card_token_id: cardTokenId,
-                status: 'authorized', // Se activa inmediatamente con el token
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const backUrl = `${appUrl}/dashboard?subscription=success`;
+        const isProduction = appUrl.startsWith('https://');
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const subscriptionBody: Record<string, any> = {
+            reason: `Oportunia - Plan ${plan.name}`,
+            auto_recurring: {
+                frequency: 1,
+                frequency_type: 'months',
+                transaction_amount: plan.price,
+                currency_id: 'ARS',
             },
-        });
+            external_reference: `${userId}|${plan.tier}`,
+            payer_email: payerEmail,
+            card_token_id: cardTokenId,
+            status: 'authorized',
+        };
+
+        if (isProduction) {
+            subscriptionBody.back_url = backUrl;
+        }
+
+        const result = await preapproval.create({ body: subscriptionBody });
 
         console.log('Suscripción API creada exitosamente:', result.id);
+
+        // Guardamos también el registro en DB
+        await supabaseAdmin.from('subscriptions').upsert({
+            user_id: userId,
+            tier: plan.tier,
+            status: 'active', // Con tarjeta aprobada, asumimos activo
+            mp_subscription_id: result.id,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+
         return { success: true, id: result.id };
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Error desconocido';
-        console.error('Error en Checkout API Subscription:', message);
-        throw new Error('Error al procesar el pago recurrente: ' + message);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+        console.error('Error creating Checkout API subscription:', error);
+
+        let errorMessage = 'Error desconocido';
+        if (error instanceof Error) {
+            errorMessage = error.message;
+        }
+
+        if (error?.response) {
+            console.error('MP API Error Response:', JSON.stringify(error.response, null, 2));
+            errorMessage += ` (API: ${JSON.stringify(error.response.data || error.response)})`;
+        } else if (error?.cause) {
+            console.error('MP API Error Cause:', JSON.stringify(error.cause, null, 2));
+        }
+
+        throw new Error('Error al procesar el pago recurrente: ' + errorMessage);
     }
 }
