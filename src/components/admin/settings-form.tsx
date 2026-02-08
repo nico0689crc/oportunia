@@ -326,19 +326,7 @@ export default function AdminSettingsForm() {
                                             className="border-primary/20 focus-visible:ring-primary"
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-sm font-semibold">URL de Webhook (MP Notification)</Label>
-                                        <div className="flex gap-2">
-                                            <Input
-                                                readOnly
-                                                value="https://<tusubdominio>.supabase.co/functions/v1/mercadopago-webhook"
-                                                className="bg-muted/50 font-mono text-xs border-dashed"
-                                            />
-                                        </div>
-                                        <p className="text-[10px] text-muted-foreground italic">
-                                            Configura esta URL en el panel de Mercado Pago Developers bajo &quot;Notificaciones Webhooks&quot;.
-                                        </p>
-                                    </div>
+
                                 </div>
                             </>
                         )}
