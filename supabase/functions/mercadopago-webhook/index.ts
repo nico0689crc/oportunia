@@ -47,97 +47,172 @@ function hexToUint8Array(hex: string): Uint8Array {
 }
 
 /**
- * Gets a valid MP Access Token from the DB
+ * Gets a valid MP Access Token from the DB based on mode (test/production)
  */
-async function getAdminToken(): Promise<string> {
-    const { data, error } = await supabase
+async function getMPAccessToken(): Promise<string> {
+    // Get mode
+    const { data: modeData, error: modeError } = await supabase
         .from('app_settings')
         .select('value')
-        .eq('key', 'ml_auth_tokens')
+        .eq('key', 'mp_mode')
         .single();
 
-    if (error || !data) throw new Error('Admin tokens not found in DB');
+    if (modeError || !modeData) {
+        throw new Error('mp_mode not found in DB');
+    }
 
-    const encryptedToken = data.value.access_token;
-    if (!encryptionKey) throw new Error('ENCRYPTION_KEY not set in Edge Function secrets');
+    const mode = modeData.value;
 
-    return await decrypt(encryptedToken, encryptionKey);
+    if (mode === 'test') {
+        // Test mode: get unencrypted token from mp_test_config
+        const { data, error } = await supabase
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'mp_test_config')
+            .single();
+
+        if (error || !data) {
+            throw new Error('mp_test_config not found in DB');
+        }
+
+        return data.value.accessToken;
+    } else {
+        // Production mode: get encrypted token from mp_auth_tokens
+        const { data, error } = await supabase
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'mp_auth_tokens')
+            .single();
+
+        if (error || !data) {
+            throw new Error('mp_auth_tokens not found in DB');
+        }
+
+        if (!encryptionKey) {
+            throw new Error('ENCRYPTION_KEY not set in Edge Function secrets');
+        }
+
+        const encryptedToken = data.value.access_token;
+        return await decrypt(encryptedToken, encryptionKey);
+    }
 }
 
 serve(async (req) => {
     try {
-        const { searchParams } = new URL(req.url)
-        const type = searchParams.get('type')
-        const id = searchParams.get('data.id') || searchParams.get('id')
+        // Mercado Pago sends webhooks as POST with JSON body
+        const body = await req.json()
+        const { type, data } = body
 
-        console.log(`Recibido webhook de MP: tipo=${type}, id=${id}`)
+        console.log('[MP Webhook] Received notification:', JSON.stringify(body, null, 2))
 
-        if ((type === 'payment' || type === 'preapproval') && id) {
-            const mpAccessToken = await getAdminToken();
-            const endpoint = type === 'payment' ? 'payments' : 'preapproval';
+        // We only care about payment notifications for Checkout Pro
+        if (type === 'payment' && data?.id) {
+            const paymentId = data.id
 
-            const response = await fetch(`https://api.mercadopago.com/v1/${endpoint}/${id}`, {
-                headers: { Authorization: `Bearer ${mpAccessToken}` }
-            });
+            console.log('[MP Webhook] Processing payment notification:', paymentId)
 
-            if (!response.ok) throw new Error(`Error consultando ${type} en MP: ${response.statusText}`);
+            // Get MP access token from database
+            const mpAccessToken = await getMPAccessToken()
 
-            const data = await response.json();
-            const externalRef = data.external_reference || '';
-            const [userId, tierFromRef] = externalRef.split('|');
+            // Fetch payment details from Mercado Pago
+            const paymentResponse = await fetch(
+                `https://api.mercadopago.com/v1/payments/${paymentId}`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${mpAccessToken}`,
+                    },
+                }
+            )
 
-            console.log(`Webhook raw data: ref=${externalRef}, userId=${userId}, tier=${tierFromRef}`);
-
-            if (!userId) {
-                console.error('No se pudo encontrar el user_id en external_reference');
-                return new Response(JSON.stringify({ error: 'No user_id found' }), { status: 200 });
+            if (!paymentResponse.ok) {
+                console.error('[MP Webhook] Failed to fetch payment details:', paymentResponse.statusText)
+                return new Response(JSON.stringify({ error: 'Failed to fetch payment' }), {
+                    headers: { 'Content-Type': 'application/json' },
+                    status: 200, // Return 200 to acknowledge receipt even on error
+                })
             }
 
-            if (type === 'payment') {
-                if (data.status === 'approved') {
-                    // Si el tier no viene en el ref (viejo formato), intentamos metadata
-                    const tier = tierFromRef || data.metadata?.plan_tier || 'pro';
+            const payment = await paymentResponse.json()
 
-                    await supabase.from('subscriptions').upsert({
-                        user_id: userId,
-                        tier: tier,
-                        status: 'active'
-                    });
-                    console.log(`Pago aprobado: Usuario ${userId} -> Tier ${tier}`);
+            console.log('[MP Webhook] Payment details:', {
+                id: payment.id,
+                status: payment.status,
+                external_reference: payment.external_reference,
+                metadata: payment.metadata,
+            })
+
+            // Check if this is a subscription payment
+            const externalRef = payment.external_reference
+            if (externalRef && externalRef.includes('subscription')) {
+                const parts = externalRef.split('|')
+                const userId = parts[0]
+                const planTier = parts[1]
+
+                console.log('[MP Webhook] Subscription payment detected:', {
+                    userId,
+                    planTier,
+                    status: payment.status
+                })
+
+                // Only update if payment is approved
+                if (payment.status === 'approved') {
+                    // Calculate next renewal date (30 days from now)
+                    const nextRenewal = new Date()
+                    nextRenewal.setDate(nextRenewal.getDate() + 30)
+
+                    const { error } = await supabase
+                        .from('subscriptions')
+                        .upsert({
+                            user_id: userId,
+                            tier: planTier,
+                            status: 'active',
+                            mp_subscription_id: payment.id.toString(),
+                            next_renewal_date: nextRenewal.toISOString(),
+                            last_payment_id: payment.id.toString(),
+                            updated_at: new Date().toISOString(),
+                        }, { onConflict: 'user_id' })
+
+                    if (error) {
+                        console.error('[MP Webhook] Error updating subscription:', error)
+                        return new Response(JSON.stringify({ error: 'Database error' }), {
+                            headers: { 'Content-Type': 'application/json' },
+                            status: 200,
+                        })
+                    }
+
+                    console.log('[MP Webhook] Subscription activated successfully for user:', userId)
+                } else if (payment.status === 'rejected' || payment.status === 'cancelled') {
+                    // Update subscription to failed
+                    await supabase
+                        .from('subscriptions')
+                        .update({
+                            status: 'failed',
+                            updated_at: new Date().toISOString(),
+                        })
+                        .eq('user_id', userId)
+
+                    console.log('[MP Webhook] Subscription payment failed for user:', userId)
+                } else {
+                    console.log('[MP Webhook] Payment status not final:', payment.status)
                 }
             } else {
-                // Suscripción recurrente (preapproval)
-                const statusMap: Record<string, string> = {
-                    authorized: 'active',
-                    paused: 'past_due',
-                    cancelled: 'canceled'
-                };
-
-                const status = statusMap[data.status] || 'inactive';
-                let tier = tierFromRef || 'pro';
-
-                // Fallback si por alguna razón no viene el tier en el ref
-                if (!tierFromRef && data.reason?.toLowerCase().includes('elite')) tier = 'elite';
-
-                await supabase.from('subscriptions').upsert({
-                    user_id: userId,
-                    tier: tier,
-                    status: status,
-                    mp_subscription_id: id
-                });
-                console.log(`Suscripción recurrente actualizada para ${userId}: ${status} (${tier})`);
+                console.log('[MP Webhook] Not a subscription payment, ignoring')
             }
+        } else {
+            console.log('[MP Webhook] Ignoring non-payment notification:', type)
         }
 
+        // Always return 200 to acknowledge receipt
         return new Response(JSON.stringify({ received: true }), {
             headers: { 'Content-Type': 'application/json' },
             status: 200,
         })
-    } catch (error: any) {
-        console.error('Error en webhook:', error.message)
-        return new Response(JSON.stringify({ error: error.message }), {
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        console.error('[MP Webhook] Error processing webhook:', errorMessage)
+        return new Response(JSON.stringify({ error: errorMessage }), {
             headers: { 'Content-Type': 'application/json' },
-            status: 400,
+            status: 200, // Return 200 to prevent retries
         })
     }
 })
