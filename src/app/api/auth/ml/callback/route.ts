@@ -54,8 +54,9 @@ export async function GET(request: NextRequest) {
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
         const redirectUri = `${baseUrl}/api/auth/ml/callback`;
 
-        console.log(`Exchanging code for ${platform} tokens with PKCE...`, {
-            clientId,
+        console.log(`[Callback] Exchanging code for ${platform} tokens...`, {
+            configKey,
+            clientIdPrefix: clientId.substring(0, 5) + '...',
             redirectUri,
             hasVerifier: !!storedVerifier,
             secretLength: decryptedSecret.length
