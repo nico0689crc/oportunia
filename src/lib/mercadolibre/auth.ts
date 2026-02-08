@@ -33,8 +33,23 @@ export class MlAuth {
     /**
      * Genera la URL de autorización
      */
-    static getAuthorizationUrl(clientId: string, redirectUri: string, codeChallenge: string, state: string, platform: 'ml' | 'mp' = 'ml'): string {
-        const authBaseUrl = platform === 'ml' ? 'https://auth.mercadolibre.com.ar' : 'https://auth.mercadopago.com.ar';
+    static getAuthorizationUrl(clientId: string, redirectUri: string, codeChallenge: string, state: string, platform: 'ml' | 'mp' = 'ml', siteId: string = 'MLA'): string {
+        // Map siteId to domain TLD
+        const tldMap: Record<string, string> = {
+            'MLA': 'com.ar',
+            'MLM': 'com.mx',
+            'MLB': 'com.br',
+            'MLC': 'cl',
+            'MCO': 'com.co',
+            'MLU': 'com.uy',
+            'MLV': 'com.ve',
+            'MPE': 'com.pe',
+            'MEC': 'com.ec'
+        };
+        const tld = tldMap[siteId] || 'com';
+        const baseDomain = platform === 'ml' ? 'mercadolibre' : 'mercadopago';
+        const authBaseUrl = `https://auth.${baseDomain}.${tld}`;
+
         const scopes = platform === 'ml'
             ? 'read offline_access items searches'
             : 'read offline_access payments';
@@ -48,6 +63,7 @@ export class MlAuth {
             state: state,
             scope: scopes,
             prompt: 'consent',
+            platform_id: platform
         });
 
         return `${authBaseUrl}/authorization?${params.toString()}`;
