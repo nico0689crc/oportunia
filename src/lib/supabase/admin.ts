@@ -1,19 +1,30 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SECRET_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SECRET_KEY;
 
-console.log('Initializing Supabase Admin Client:', {
-    url: supabaseUrl,
-    hasKey: !!supabaseServiceKey,
-    keyStart: supabaseServiceKey ? supabaseServiceKey.substring(0, 10) + '...' : 'MISSING'
-});
+if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('CRITICAL: Supabase environment variables are missing.');
+    console.error('Make sure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY are set.');
+}
 
 // Cliente con service_role para operaciones seguras desde el servidor (Server Actions / API Routes)
 // PRECAUCIÓN: Nunca usar este cliente en componentes del lado del cliente.
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-        autoRefreshToken: false,
-        persistSession: false
+// Exportamos el cliente, pero lanzamos un error claro si se intenta usar sin la clave
+export const supabaseAdmin = (function () {
+    if (!supabaseUrl || !supabaseServiceKey) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return new Proxy({} as any, {
+            get: () => {
+                throw new Error('Supabase Admin Client no pudo inicializarse. Falta SUPABASE_SECRET_KEY en las variables de entorno.');
+            }
+        });
     }
-});
+
+    return createClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false
+        }
+    });
+})();
