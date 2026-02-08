@@ -2,9 +2,6 @@ import crypto from 'crypto';
 import axios from 'axios';
 import { MlTokenResponse } from '@/types/mercadolibre';
 
-const ML_AUTH_BASE_URL = 'https://auth.mercadolibre.com.ar';
-const ML_API_BASE_URL = 'https://api.mercadolibre.com';
-
 export class MlAuth {
     /**
      * Genera un code_verifier para PKCE

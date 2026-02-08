@@ -2,21 +2,8 @@ import DashboardLayout from "@/components/dashboard/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, TrendingUp, FileText, Users } from "lucide-react";
 import { SubscriptionStatus } from "@/components/subscriptions/subscription-status";
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { getSubscriptionData } from "@/lib/subscriptions";
-import { redirect } from "next/navigation";
 
-interface Props {
-    searchParams: { [key: string]: string | string[] | undefined };
-}
-
-export default async function DashboardPage({ searchParams }: Props) {
-    const { userId } = await auth();
-    const user = await currentUser();
-
-    // Next.js 15+: searchParams is now async
-    const params = await searchParams;
-
+export default async function DashboardPage() {
     // Note: Removed automatic redirect logic to prevent infinite loops
     // The redirect to billing happens from sign-up page via useEffect
     // If user lands here with a plan param, the banner will handle it

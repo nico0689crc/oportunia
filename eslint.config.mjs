@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Supabase Edge Functions (Deno)
     "supabase/**",
+    // MCP Servers
+    "mcp-servers/**",
   ]),
 ]);
 

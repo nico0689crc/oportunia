@@ -7,7 +7,7 @@ import { useEffect } from "react";
 export default function SignUpPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const { isSignedIn, user } = useUser();
+    const { isSignedIn } = useUser();
     const plan = searchParams.get('plan');
 
     // Redirigir manualmente cuando el usuario se registra
