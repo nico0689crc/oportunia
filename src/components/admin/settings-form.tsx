@@ -14,6 +14,7 @@ import { toast } from "sonner";
 interface MLConfig {
     clientId: string;
     clientSecret: string;
+    publicKey: string;
     siteId: string;
 }
 
@@ -30,6 +31,7 @@ export default function AdminSettingsForm() {
     const [config, setConfig] = useState<MLConfig>({
         clientId: "",
         clientSecret: "",
+        publicKey: "",
         siteId: "MLA"
     });
     const [authStatus, setAuthStatus] = useState<MLAuthStatus | null>(null);
@@ -148,6 +150,17 @@ export default function AdminSettingsForm() {
 
                         <div className="grid gap-6 md:grid-cols-2">
                             <div className="space-y-2">
+                                <Label htmlFor="public_key" className="text-sm font-semibold">Public Key</Label>
+                                <Input
+                                    id="public_key"
+                                    value={config.publicKey || ""}
+                                    onChange={(e) => setConfig({ ...config, publicKey: e.target.value })}
+                                    placeholder="APP_USR-..."
+                                    className="border-primary/20 focus-visible:ring-primary"
+                                    spellCheck={false}
+                                />
+                            </div>
+                            <div className="space-y-2">
                                 <Label className="text-sm font-semibold flex items-center gap-2">
                                     URL de Callback (Redirección)
                                     <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Configurar en ML Dashboard</span>
@@ -175,6 +188,9 @@ export default function AdminSettingsForm() {
                                     Copia esta URL y pégala en &quot;Redirect URI&quot; dentro de tu aplicación en el Mercado Libre Developers Dashboard.
                                 </p>
                             </div>
+                        </div>
+
+                        <div className="grid gap-6 md:grid-cols-2">
                             <div className="space-y-2">
                                 <Label htmlFor="site_id" className="text-sm font-semibold">Site ID por Defecto</Label>
                                 <Input

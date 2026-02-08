@@ -12,6 +12,7 @@ interface AuthTokens {
 interface MLConfig {
     clientId: string;
     clientSecret: string;
+    publicKey: string;
     siteId: string;
 }
 
@@ -57,7 +58,7 @@ export async function getValidAdminToken(): Promise<string> {
     try {
         decryptedRefreshToken = decrypt(refresh_token);
         decryptedClientSecret = decrypt(config.clientSecret);
-    } catch (error) {
+    } catch (_error) {
         throw new Error('CORRUPTED_TOKENS: Failed to decrypt credentials.');
     }
 
