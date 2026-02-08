@@ -39,7 +39,8 @@ export default async function HistoryPage() {
                 </Card>
             ) : (
                 <div className="grid gap-4">
-                    {history.map((item) => (
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {history.map((item: any) => (
                         <Card key={item.id} className="group hover:border-primary/50 transition-colors shadow-sm overflow-hidden border-2">
                             <CardHeader className="p-4 sm:p-6 flex-row items-center justify-between space-y-0 gap-4">
                                 <div className="flex items-center gap-4">

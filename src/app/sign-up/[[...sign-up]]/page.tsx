@@ -17,6 +17,7 @@ export default function SignUpPage() {
             <SignUp
                 forceRedirectUrl={redirectUrl}
                 signInForceRedirectUrl={redirectUrl}
+                unsafeMetadata={plan ? { intendedPlan: plan } : undefined}
             />
         </div>
     );

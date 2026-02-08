@@ -2,8 +2,34 @@ import DashboardLayout from "@/components/dashboard/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, TrendingUp, FileText, Users } from "lucide-react";
 import { SubscriptionStatus } from "@/components/subscriptions/subscription-status";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { getSubscriptionData } from "@/lib/subscriptions";
+import { redirect } from "next/navigation";
 
-export default function DashboardPage() {
+interface Props {
+    searchParams: { [key: string]: string | string[] | undefined };
+}
+
+export default async function DashboardPage({ searchParams }: Props) {
+    const { userId } = await auth();
+    const user = await currentUser();
+
+    const planParam = searchParams.plan;
+    let plan = Array.isArray(planParam) ? planParam[0] : planParam;
+
+    // Si no hay plan en la URL, buscamos en los metadatos de Clerk (el fallback definitivo)
+    if (!plan && user?.unsafeMetadata?.intendedPlan) {
+        plan = user.unsafeMetadata.intendedPlan as string;
+    }
+
+    // Si detectamos intención de un plan pago, validamos si ya tiene uno activo
+    if (plan && plan !== 'free' && userId) {
+        const sub = await getSubscriptionData(userId);
+        if (sub.status !== 'active') {
+            redirect(`/dashboard/billing/redirect?plan=${plan}`);
+        }
+    }
+
     const stats = [
         { title: "Búsquedas", val: "12", icon: Search },
         { title: "Nichos Top", val: "5", icon: TrendingUp },

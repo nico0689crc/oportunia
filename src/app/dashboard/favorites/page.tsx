@@ -39,7 +39,8 @@ export default async function FavoritesPage() {
                 </Card>
             ) : (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {favorites.map((fav) => (
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {favorites.map((fav: any) => (
                         <NicheCard
                             key={fav.id}
                             niche={fav.niche_data}

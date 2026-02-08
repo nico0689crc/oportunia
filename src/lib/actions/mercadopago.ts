@@ -26,7 +26,12 @@ export async function createSubscriptionPreference(plan: {
     const preapproval = new PreApproval(mongoClient);
 
     try {
-        console.log('Creating MP PreApproval for:', { planName: plan.name, userId, payerEmail });
+        console.log('[MP Preference] Starting creation for:', {
+            planName: plan.name,
+            planTier: plan.tier,
+            userId,
+            payerEmail
+        });
 
         const result = await preapproval.create({
             body: {
@@ -44,10 +49,11 @@ export async function createSubscriptionPreference(plan: {
             },
         });
 
-        console.log('MP PreApproval created successfully:', result.id);
+        console.log('[MP Preference] PreApproval created successfully:', result.id);
 
         // Guardamos el estado pendiente en la base de datos para mostrar el banner
-        await supabaseAdmin
+        console.log('[MP Preference] Upserting pending subscription record for:', userId);
+        const { error: upsertError } = await supabaseAdmin
             .from('subscriptions')
             .upsert({
                 user_id: userId,
@@ -56,6 +62,12 @@ export async function createSubscriptionPreference(plan: {
                 mp_subscription_id: result.id,
                 updated_at: new Date().toISOString()
             }, { onConflict: 'user_id' });
+
+        if (upsertError) {
+            console.error('[MP Preference] Error upserting subscription:', upsertError);
+        } else {
+            console.log('[MP Preference] Subscription upserted successfully');
+        }
 
         return { url: result.init_point };
     } catch (error: unknown) {

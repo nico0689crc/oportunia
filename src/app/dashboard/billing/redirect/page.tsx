@@ -10,16 +10,37 @@ interface Props {
 
 export default async function BillingRedirectPage({ searchParams }: Props) {
     const { userId } = await auth();
+    const planParam = searchParams.plan;
+    const planTier = Array.isArray(planParam) ? planParam[0] : planParam;
+
+    console.log('[BillingRedirect] Hit!', {
+        userId,
+        planTier,
+        allParams: searchParams
+    });
+
     if (!userId) {
+        console.warn('[BillingRedirect] No userId found, redirecting to sign-in');
         redirect('/sign-in');
     }
 
-    const planTier = searchParams.plan as string;
     const plan = PLANS.find(p => p.tier === planTier);
 
     if (!plan || plan.tier === 'free') {
+        console.log('[BillingRedirect] No valid paid plan found, falling back to dashboard', { planTier });
         redirect('/dashboard');
     }
+
+    // Si ya tiene el plan activo, no necesita pagar de nuevo
+    if (userId) {
+        const sub = await getSubscriptionData(userId);
+        if (sub.status === 'active' && sub.tier === plan.tier) {
+            console.log('[BillingRedirect] User already has an active subscription for this tier, skipping checkout');
+            redirect('/dashboard');
+        }
+    }
+
+    console.log('[BillingRedirect] Creating subscription preference for plan:', plan.name);
 
     try {
         const { url } = await createSubscriptionPreference(plan);
