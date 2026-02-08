@@ -33,7 +33,12 @@ export class MlAuth {
     /**
      * Genera la URL de autorización
      */
-    static getAuthorizationUrl(clientId: string, redirectUri: string, codeChallenge: string, state: string): string {
+    static getAuthorizationUrl(clientId: string, redirectUri: string, codeChallenge: string, state: string, platform: 'ml' | 'mp' = 'ml'): string {
+        const authBaseUrl = platform === 'ml' ? 'https://auth.mercadolibre.com.ar' : 'https://auth.mercadopago.com.ar';
+        const scopes = platform === 'ml'
+            ? 'read offline_access items searches'
+            : 'read offline_access payments';
+
         const params = new URLSearchParams({
             response_type: 'code',
             client_id: clientId,
@@ -41,11 +46,11 @@ export class MlAuth {
             code_challenge: codeChallenge,
             code_challenge_method: 'S256',
             state: state,
-            scope: 'read offline_access items searches',
+            scope: scopes,
             prompt: 'consent',
         });
 
-        return `${ML_AUTH_BASE_URL}/authorization?${params.toString()}`;
+        return `${authBaseUrl}/authorization?${params.toString()}`;
     }
 
     /**

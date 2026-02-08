@@ -129,7 +129,7 @@ export async function getMlAuthUrlAction(platform: 'ml' | 'mp' = 'ml') {
         maxAge: 600
     });
 
-    return MlAuth.getAuthorizationUrl(config.clientId, redirectUri, challenge, state);
+    return MlAuth.getAuthorizationUrl(config.clientId, redirectUri, challenge, state, platform);
 }
 
 /**
