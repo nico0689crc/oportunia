@@ -124,10 +124,9 @@ export default function AdminSettingsForm() {
             await saveAppSettingsAction('mp_mode', mpMode);
 
             if (mpMode === 'test') {
-                // Save test config (encrypt access token, public key is plain)
-                const { encrypt } = await import('@/lib/encryption');
+                // Save test config (server will handle encryption)
                 await saveAppSettingsAction('mp_test_config', {
-                    accessToken: mpTestConfig.accessToken.startsWith('••') ? mpTestConfig.accessToken : encrypt(mpTestConfig.accessToken),
+                    accessToken: mpTestConfig.accessToken,
                     publicKey: mpTestConfig.publicKey
                 });
                 toast.success('Configuración de Test guardada correctamente');

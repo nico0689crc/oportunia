@@ -39,6 +39,28 @@ export async function saveAppSettingsAction(key: string, value: unknown) {
         valueToSave = newConfig as Record<string, unknown>;
     }
 
+    // Lógica especial para mp_test_config (encriptación de accessToken)
+    if (key === 'mp_test_config') {
+        const testConfig = value as { accessToken?: string; publicKey?: string };
+
+        // Si el cliente envía el placeholder, mantener el token anterior
+        if (testConfig.accessToken === '••••••••••••••••') {
+            const { data: existing } = await supabaseAdmin
+                .from('app_settings')
+                .select('value')
+                .eq('key', key)
+                .single();
+
+            if (existing && (existing.value as { accessToken?: string }).accessToken) {
+                testConfig.accessToken = (existing.value as { accessToken?: string }).accessToken;
+            }
+        } else if (testConfig.accessToken) {
+            // Es un token nuevo, lo encriptamos
+            testConfig.accessToken = encrypt(testConfig.accessToken);
+        }
+        valueToSave = testConfig as Record<string, unknown>;
+    }
+
     try {
         const { error } = await supabaseAdmin
             .from('app_settings')
