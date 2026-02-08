@@ -1,6 +1,6 @@
 'use server';
 
-import { currentUser } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { MercadoPagoConfig, PreApproval } from 'mercadopago';
 import { getValidMPToken } from '@/lib/mercadopago/admin-auth';
 import { supabaseAdmin } from '@/lib/supabase/admin';
@@ -10,17 +10,36 @@ export async function createSubscriptionPreference(plan: {
     price: number;
     tier: string;
 }) {
-    const user = await currentUser();
+    // Usamos auth() primero que es más rápido y seguro
+    const { userId, sessionClaims } = await auth();
 
-    if (!user) {
+    if (!userId) {
+        console.error('[MP Error] No userId found in session');
         throw new Error('No estás autenticado');
     }
 
-    const userId = user.id;
-    const payerEmail = user.emailAddresses[0]?.emailAddress || 'test_user_123@test.com';
+    // Intentamos obtener detalles del usuario, pero no bloqueamos si falla
+    let userDetails = { firstName: undefined as string | undefined, lastName: undefined as string | undefined };
+    try {
+        const user = await currentUser();
+        if (user) {
+            userDetails = { firstName: user.firstName || undefined, lastName: user.lastName || undefined };
+        }
+    } catch (err) {
+        console.warn('[MP Warning] Failed to fetch currentUser details:', err);
+    }
 
-    const accessToken = await getValidMPToken();
-    console.log('[MP DEBUG] Active Access Token Prefix:', accessToken.substring(0, 15) + '...');
+    const payerEmail = (sessionClaims?.email as string) || 'test_user_123@test.com';
+
+    console.log('[MP Step] Getting valid MP token...');
+    let accessToken;
+    try {
+        accessToken = await getValidMPToken();
+        console.log('[MP DEBUG] Active Access Token Prefix:', accessToken ? accessToken.substring(0, 10) + '...' : 'UNDEFINED');
+    } catch (tokenError) {
+        console.error('[MP Critical] Failed to get Access Token:', tokenError);
+        throw new Error('Error de configuración de pago (Token)');
+    }
 
     const mongoClient = new MercadoPagoConfig({
         accessToken: accessToken,
@@ -57,8 +76,8 @@ export async function createSubscriptionPreference(plan: {
             statement_descriptor: "OPORTUNIA",
             external_reference: `${userId}|${plan.tier}`,
             payer_email: payerEmail,
-            payer_first_name: user.firstName || undefined,
-            payer_last_name: user.lastName || undefined,
+            payer_first_name: userDetails.firstName,
+            payer_last_name: userDetails.lastName,
             status: 'pending',
             back_url: isProduction ? backUrl : undefined,
         };
