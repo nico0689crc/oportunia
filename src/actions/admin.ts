@@ -7,12 +7,6 @@ import { encrypt } from '@/lib/encryption';
 import { cookies } from 'next/headers';
 import { MlAuth } from '@/lib/mercadolibre/auth';
 
-interface MLConfig {
-    clientId: string;
-    clientSecret: string;
-    siteId: string;
-}
-
 /**
  * Guarda una configuración global en la base de datos
  */
@@ -23,26 +17,26 @@ export async function saveAppSettingsAction(key: string, value: unknown) {
 
     let valueToSave = value;
 
-    // Lógica especial para ml_config (encriptación de secret)
-    if (key === 'ml_config') {
-        const newConfig = value as MLConfig;
+    // Lógica especial para ml_config y mp_config (encriptación de secret)
+    if (key === 'ml_config' || key === 'mp_config') {
+        const newConfig = value as { clientSecret?: string };
 
         // Si el cliente envía el placeholder, intentamos mantener el secreto anterior
         if (newConfig.clientSecret === '••••••••••••••••') {
             const { data: existing } = await supabaseAdmin
                 .from('app_settings')
                 .select('value')
-                .eq('key', 'ml_config')
+                .eq('key', key)
                 .single();
 
-            if (existing && (existing.value as MLConfig).clientSecret) {
-                newConfig.clientSecret = (existing.value as MLConfig).clientSecret;
+            if (existing && (existing.value as { clientSecret?: string }).clientSecret) {
+                newConfig.clientSecret = (existing.value as { clientSecret?: string }).clientSecret;
             }
         } else if (newConfig.clientSecret) {
             // Es un secreto nuevo, lo encriptamos
             newConfig.clientSecret = encrypt(newConfig.clientSecret);
         }
-        valueToSave = newConfig;
+        valueToSave = newConfig as Record<string, unknown>;
     }
 
     try {
@@ -90,15 +84,18 @@ export async function getAppSettingsAction<T>(key: string): Promise<T | null> {
 
 /**
  * Genera la URL de autorización de Mercado Libre con PKCE
+ * Soporta plataformas 'ml' (Mercado Libre) y 'mp' (Mercado Pago)
  */
-export async function getMlAuthUrlAction() {
+export async function getMlAuthUrlAction(platform: 'ml' | 'mp' = 'ml') {
     if (!await isAdmin()) {
         throw new Error('No autorizado');
     }
 
-    const config = await getAppSettingsAction<MLConfig>('ml_config');
+    const configKey = platform === 'ml' ? 'ml_config' : 'mp_config';
+    const config = await getAppSettingsAction<{ clientId: string }>(configKey);
+
     if (!config || !config.clientId) {
-        throw new Error('ML_CONFIG_MISSING: Por favor configura el Client ID primero.');
+        throw new Error(`${platform.toUpperCase()}_CONFIG_MISSING: Por favor configura el Client ID para ${platform} primero.`);
     }
 
     const verifier = MlAuth.generateCodeVerifier();
@@ -108,8 +105,15 @@ export async function getMlAuthUrlAction() {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const redirectUri = `${baseUrl}/api/auth/ml/callback`;
 
-    // Guardar verifier y state en cookies seguras
+    // Guardar verifier, state y plataforma en cookies seguras
     const cookieStore = await cookies();
+
+    cookieStore.set('ml_auth_platform', platform, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 600
+    });
 
     cookieStore.set('ml_code_verifier', verifier, {
         httpOnly: true,
@@ -126,4 +130,17 @@ export async function getMlAuthUrlAction() {
     });
 
     return MlAuth.getAuthorizationUrl(config.clientId, redirectUri, challenge, state);
+}
+
+/**
+ * Obtiene la Public Key de Mercado Pago para el frontend (Bricks)
+ */
+export async function getMPPublicKeyAction() {
+    try {
+        const { getMPPublicKey } = await import('@/lib/mercadopago/admin-auth');
+        const publicKey = await getMPPublicKey();
+        return { success: true, publicKey };
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'Error al obtener Public Key' };
+    }
 }

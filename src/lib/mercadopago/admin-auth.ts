@@ -9,22 +9,45 @@ interface AuthTokens {
     ml_user_id: string;
 }
 
-interface MLConfig {
+interface MPConfig {
     clientId: string;
     clientSecret: string;
     publicKey: string;
-    siteId: string;
 }
 
 /**
- * Gets a valid Mercado Pago/Libre Access Token for Admin operations.
- * Automatically refreshes the token if expired or near expiry.
+ * Gets a valid Mercado Libre Access Token for Admin operations (Search, etc.)
  */
-export async function getValidAdminToken(): Promise<string> {
-    const tokens = await getAppSettingsAction<AuthTokens>('ml_auth_tokens');
+export async function getValidMLToken(): Promise<string> {
+    return getValidToken('ml_config', 'ml_auth_tokens');
+}
+
+/**
+ * Gets a valid Mercado Pago Access Token for Billing operations (Subscriptions, etc.)
+ */
+export async function getValidMPToken(): Promise<string> {
+    return getValidToken('mp_config', 'mp_auth_tokens');
+}
+
+/**
+ * Gets the Public Key for Mercado Pago frontend bricks.
+ */
+export async function getMPPublicKey(): Promise<string> {
+    const config = await getAppSettingsAction<MPConfig>('mp_config');
+    if (!config?.publicKey) {
+        throw new Error('MP_PUBLIC_KEY_MISSING: Please configure Mercado Pago Public Key in Admin Settings.');
+    }
+    return config.publicKey;
+}
+
+/**
+ * Generic function to get and refresh tokens for either ML or MP.
+ */
+async function getValidToken(configKey: 'ml_config' | 'mp_config', tokenKey: 'ml_auth_tokens' | 'mp_auth_tokens'): Promise<string> {
+    const tokens = await getAppSettingsAction<AuthTokens>(tokenKey);
 
     if (!tokens) {
-        throw new Error('Mercado Pago Admin tokens not found. Please connect in Admin Settings.');
+        throw new Error(`Tokens not found for ${tokenKey}. Please connect in Admin Settings.`);
     }
 
     const { access_token, refresh_token, expires_at } = tokens;
@@ -38,18 +61,17 @@ export async function getValidAdminToken(): Promise<string> {
         try {
             return decrypt(access_token);
         } catch (error) {
-            console.error('Failed to decrypt access token:', error);
-            // If decryption fails, try to refresh maybe? or throw
+            console.error(`Failed to decrypt access token for ${tokenKey}:`, error);
             throw new Error('CORRUPTED_TOKENS: Failed to decrypt access token.');
         }
     }
 
-    console.log('Mercado Pago Admin token expired or near expiry. Refreshing...');
+    console.log(`Token for ${tokenKey} expired or near expiry. Refreshing...`);
 
     // Fetch config to get clientId and encrypted clientSecret
-    const config = await getAppSettingsAction<MLConfig>('ml_config');
+    const config = await getAppSettingsAction<{ clientId: string; clientSecret: string }>(configKey);
     if (!config || !config.clientId || !config.clientSecret) {
-        throw new Error('ML_CONFIG_MISSING: Cannot refresh token without application credentials.');
+        throw new Error(`${configKey.toUpperCase()}_MISSING: Cannot refresh token without application credentials.`);
     }
 
     // Need to refresh
@@ -58,7 +80,8 @@ export async function getValidAdminToken(): Promise<string> {
     try {
         decryptedRefreshToken = decrypt(refresh_token);
         decryptedClientSecret = decrypt(config.clientSecret);
-    } catch (_error) {
+    } catch (err) {
+        console.error('Decryption failed during token refresh:', err);
         throw new Error('CORRUPTED_TOKENS: Failed to decrypt credentials.');
     }
 
@@ -77,11 +100,11 @@ export async function getValidAdminToken(): Promise<string> {
             ml_user_id: newTokens.user_id.toString(),
         };
 
-        await saveAppSettingsAction('ml_auth_tokens', updatedTokens);
+        await saveAppSettingsAction(tokenKey, updatedTokens);
 
         return newTokens.access_token;
     } catch (error) {
-        console.error('Failed to refresh Mercado Pago Admin token:', error);
-        throw new Error('REFRESH_FAILED: Could not refresh Admin tokens. Manual reconnection might be required.');
+        console.error(`Failed to refresh tokens for ${tokenKey}:`, error);
+        throw new Error(`REFRESH_FAILED: Could not refresh tokens for ${tokenKey}. Manual reconnection might be required.`);
     }
 }

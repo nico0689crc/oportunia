@@ -8,17 +8,21 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Key, Globe, Save, RefreshCw, CheckCircle2, BrainCircuit } from "lucide-react";
 import { saveAppSettingsAction, getAppSettingsAction, getMlAuthUrlAction } from "@/actions/admin";
-import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 interface MLConfig {
     clientId: string;
     clientSecret: string;
-    publicKey: string;
     siteId: string;
 }
 
-interface MLAuthStatus {
+interface MPConfig {
+    clientId: string;
+    clientSecret: string;
+    publicKey: string;
+}
+
+interface AuthStatus {
     access_token: string;
     expires_at: string;
     refresh_token?: string;
@@ -28,28 +32,43 @@ interface MLAuthStatus {
 export default function AdminSettingsForm() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [config, setConfig] = useState<MLConfig>({
+    const [mlConfig, setMlConfig] = useState<MLConfig>({
         clientId: "",
         clientSecret: "",
-        publicKey: "",
         siteId: "MLA"
     });
-    const [authStatus, setAuthStatus] = useState<MLAuthStatus | null>(null);
-    const searchParams = useSearchParams();
+    const [mpConfig, setMpConfig] = useState<MPConfig>({
+        clientId: "",
+        clientSecret: "",
+        publicKey: ""
+    });
+    const [mlAuthStatus, setMlAuthStatus] = useState<AuthStatus | null>(null);
+    const [mpAuthStatus, setMpAuthStatus] = useState<AuthStatus | null>(null);
 
     const loadSettings = useCallback(async () => {
         setLoading(true);
         try {
-            const savedConfig = await getAppSettingsAction<MLConfig>('ml_config');
-            const savedAuth = await getAppSettingsAction<MLAuthStatus>('ml_auth_tokens');
+            const [savedMlConfig, savedMpConfig, savedMlAuth, savedMpAuth] = await Promise.all([
+                getAppSettingsAction<MLConfig>('ml_config'),
+                getAppSettingsAction<MPConfig>('mp_config'),
+                getAppSettingsAction<AuthStatus>('ml_auth_tokens'),
+                getAppSettingsAction<AuthStatus>('mp_auth_tokens')
+            ]);
 
-            if (savedConfig) {
-                setConfig({
-                    ...savedConfig,
-                    clientSecret: savedConfig.clientSecret ? '••••••••••••••••' : ''
+            if (savedMlConfig) {
+                setMlConfig({
+                    ...savedMlConfig,
+                    clientSecret: savedMlConfig.clientSecret ? '••••••••••••••••' : ''
                 });
             }
-            if (savedAuth) setAuthStatus(savedAuth);
+            if (savedMpConfig) {
+                setMpConfig({
+                    ...savedMpConfig,
+                    clientSecret: savedMpConfig.clientSecret ? '••••••••••••••••' : ''
+                });
+            }
+            if (savedMlAuth) setMlAuthStatus(savedMlAuth);
+            if (savedMpAuth) setMpAuthStatus(savedMpAuth);
         } catch (error) {
             console.error("Failed to load settings:", error);
         } finally {
@@ -61,31 +80,31 @@ export default function AdminSettingsForm() {
         loadSettings();
     }, [loadSettings]);
 
-    const handleSave = async () => {
+    const handleSave = async (key: 'ml_config' | 'mp_config', value: unknown) => {
         setSaving(true);
-        const promise = saveAppSettingsAction('ml_config', config);
+        const promise = saveAppSettingsAction(key, value);
 
         toast.promise(promise, {
             loading: 'Guardando configuración...',
-            success: (result) => {
+            success: (result: { success: boolean; error?: string }) => {
                 if (result.success) return 'Configuración guardada correctamente';
                 throw new Error(result.error);
             },
-            error: (err) => `Error: ${err.message || 'No se pudo guardar'}`
+            error: (err: Error) => `Error: ${err.message || 'No se pudo guardar'}`
         });
 
         try {
             await promise;
-        } catch (error) {
+        } catch (error: unknown) {
             console.error("Save failed:", error);
         } finally {
             setSaving(false);
         }
     };
 
-    const handleConnect = async () => {
+    const handleConnect = async (platform: 'ml' | 'mp' = 'ml') => {
         try {
-            const authUrl = await getMlAuthUrlAction();
+            const authUrl = await getMlAuthUrlAction(platform);
             window.location.href = authUrl;
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Error al generar URL de conexión';
@@ -102,9 +121,12 @@ export default function AdminSettingsForm() {
 
     return (
         <Tabs defaultValue="mercadolibre" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 md:w-[400px]">
+            <TabsList className="grid w-full grid-cols-3 md:w-[600px]">
                 <TabsTrigger value="mercadolibre" className="flex items-center gap-2">
                     <Globe className="h-4 w-4" /> Mercado Libre
+                </TabsTrigger>
+                <TabsTrigger value="mercadopago" className="flex items-center gap-2">
+                    <Key className="h-4 w-4" /> Mercado Pago
                 </TabsTrigger>
                 <TabsTrigger value="ai" className="flex items-center gap-2">
                     <BrainCircuit className="h-4 w-4" /> Configuración IA
@@ -114,79 +136,35 @@ export default function AdminSettingsForm() {
             <TabsContent value="mercadolibre" className="mt-6 space-y-6">
                 <Card className="border-2 shadow-sm">
                     <CardHeader>
-                        <CardTitle className="text-xl">Credenciales de Aplicación</CardTitle>
+                        <CardTitle className="text-xl">Mercado Libre: Búsquedas y API</CardTitle>
                         <CardDescription>
-                            Configura los parámetros de OAuth para la integración oficial con la API de Mercado Libre.
+                            Credenciales para el motor de búsqueda de nichos y análisis de competencia.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="grid gap-6 md:grid-cols-2">
                             <div className="space-y-2">
-                                <Label htmlFor="client_id" className="text-sm font-semibold">Client ID</Label>
+                                <Label htmlFor="ml_client_id" className="text-sm font-semibold">Client ID</Label>
                                 <Input
-                                    id="client_id"
-                                    value={config.clientId}
-                                    onChange={(e) => setConfig({ ...config, clientId: e.target.value })}
-                                    placeholder="ID de tu aplicación"
+                                    id="ml_client_id"
+                                    value={mlConfig.clientId}
+                                    onChange={(e) => setMlConfig({ ...mlConfig, clientId: e.target.value })}
+                                    placeholder="ID de tu aplicación ML"
                                     className="border-primary/20 focus-visible:ring-primary"
                                     autoComplete="off"
-                                    spellCheck={false}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="client_secret" className="text-sm font-semibold">Client Secret</Label>
+                                <Label htmlFor="ml_client_secret" className="text-sm font-semibold">Client Secret</Label>
                                 <Input
-                                    id="client_secret"
+                                    id="ml_client_secret"
                                     type="password"
-                                    value={config.clientSecret}
-                                    onChange={(e) => setConfig({ ...config, clientSecret: e.target.value })}
+                                    value={mlConfig.clientSecret}
+                                    onChange={(e) => setMlConfig({ ...mlConfig, clientSecret: e.target.value })}
                                     placeholder="••••••••••••••••"
                                     className="border-primary/20 focus-visible:ring-primary"
                                     autoComplete="new-password"
-                                    spellCheck={false}
                                 />
-                            </div>
-                        </div>
-
-                        <div className="grid gap-6 md:grid-cols-2">
-                            <div className="space-y-2">
-                                <Label htmlFor="public_key" className="text-sm font-semibold">Public Key</Label>
-                                <Input
-                                    id="public_key"
-                                    value={config.publicKey || ""}
-                                    onChange={(e) => setConfig({ ...config, publicKey: e.target.value })}
-                                    placeholder="APP_USR-..."
-                                    className="border-primary/20 focus-visible:ring-primary"
-                                    spellCheck={false}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-semibold flex items-center gap-2">
-                                    URL de Callback (Redirección)
-                                    <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Configurar en ML Dashboard</span>
-                                </Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        readOnly
-                                        value={typeof window !== 'undefined' ? `${window.location.origin}/api/auth/ml/callback` : ''}
-                                        className="bg-muted/50 font-mono text-xs border-dashed"
-                                    />
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        className="shrink-0"
-                                        onClick={() => {
-                                            const url = `${window.location.origin}/api/auth/ml/callback`;
-                                            navigator.clipboard.writeText(url);
-                                            toast.success('URL copiada al portapapeles');
-                                        }}
-                                    >
-                                        <Key className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                                <p className="text-[10px] text-muted-foreground italic">
-                                    Copia esta URL y pégala en &quot;Redirect URI&quot; dentro de tu aplicación en el Mercado Libre Developers Dashboard.
-                                </p>
                             </div>
                         </div>
 
@@ -195,57 +173,146 @@ export default function AdminSettingsForm() {
                                 <Label htmlFor="site_id" className="text-sm font-semibold">Site ID por Defecto</Label>
                                 <Input
                                     id="site_id"
-                                    value={config.siteId}
-                                    onChange={(e) => setConfig({ ...config, siteId: e.target.value })}
+                                    value={mlConfig.siteId}
+                                    onChange={(e) => setMlConfig({ ...mlConfig, siteId: e.target.value })}
                                     placeholder="MLA"
                                 />
                             </div>
                         </div>
 
                         <div className="pt-4 flex flex-wrap gap-4 border-t">
-                            <Button className="font-bold px-8 shadow-md transition-all hover:scale-[1.02]" onClick={handleSave} disabled={saving}>
+                            <Button className="font-bold px-8 shadow-md" onClick={() => handleSave('ml_config', mlConfig)} disabled={saving}>
                                 {saving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                Guardar Cambios
+                                Guardar Mercado Libre
                             </Button>
                             <Button
                                 variant="outline"
-                                className="border-primary text-primary hover:bg-primary/5 transition-all"
-                                onClick={handleConnect}
-                                disabled={!config.clientId}
+                                className="border-primary text-primary"
+                                onClick={() => handleConnect('ml')}
+                                disabled={!mlConfig.clientId}
                             >
-                                <RefreshCw className="mr-2 h-4 w-4" /> Sincronizar con ML
+                                <RefreshCw className="mr-2 h-4 w-4" /> Sincronizar Admin ML
                             </Button>
                         </div>
 
-                        {authStatus ? (
+                        {mlAuthStatus ? (
                             <div className="flex items-center gap-4 p-4 bg-green-50 border border-green-200 rounded-xl">
-                                <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                                    <CheckCircle2 className="h-6 w-6" />
-                                </div>
+                                <CheckCircle2 className="h-6 w-6 text-green-600" />
                                 <div>
-                                    <p className="text-sm font-bold text-green-900">Estado: Conectado Correctamente</p>
-                                    <p className="text-xs text-green-700">Token válido hasta: {new Date(authStatus.expires_at).toLocaleString()}</p>
+                                    <p className="text-sm font-bold text-green-900">ML Conectado</p>
+                                    <p className="text-xs text-green-700">Token válido hasta: {new Date(mlAuthStatus.expires_at).toLocaleString()}</p>
                                 </div>
                             </div>
                         ) : (
                             <div className="flex items-center gap-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                                <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
-                                    <Key className="h-6 w-6" />
-                                </div>
+                                <Key className="h-6 w-6 text-amber-600" />
                                 <div>
-                                    <p className="text-sm font-bold text-amber-900">Estado: Requiere Acción</p>
-                                    <p className="text-xs text-amber-700">Debes sincronizar tu cuenta para habilitar las búsquedas.</p>
+                                    <p className="text-sm font-bold text-amber-900">Requiere Sincronización ML</p>
+                                    <p className="text-xs text-amber-700">Debes conectar tu cuenta para habilitar las búsquedas.</p>
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
+            <TabsContent value="mercadopago" className="mt-6 space-y-6">
+                <Card className="border-2 shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-xl">Mercado Pago: Pagos y Suscripciones</CardTitle>
+                        <CardDescription>
+                            Credenciales para el sistema de facturación y cobro recurrente del SaaS.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="grid gap-6 md:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="mp_client_id" className="text-sm font-semibold">Client ID</Label>
+                                <Input
+                                    id="mp_client_id"
+                                    value={mpConfig.clientId}
+                                    onChange={(e) => setMpConfig({ ...mpConfig, clientId: e.target.value })}
+                                    placeholder="ID de tu aplicación MP"
+                                    className="border-primary/20 focus-visible:ring-primary"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="mp_client_secret" className="text-sm font-semibold">Client Secret</Label>
+                                <Input
+                                    id="mp_client_secret"
+                                    type="password"
+                                    value={mpConfig.clientSecret}
+                                    onChange={(e) => setMpConfig({ ...mpConfig, clientSecret: e.target.value })}
+                                    placeholder="••••••••••••••••"
+                                    className="border-primary/20 focus-visible:ring-primary"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid gap-6 md:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="mp_public_key" className="text-sm font-semibold">Public Key</Label>
+                                <Input
+                                    id="mp_public_key"
+                                    value={mpConfig.publicKey}
+                                    onChange={(e) => setMpConfig({ ...mpConfig, publicKey: e.target.value })}
+                                    placeholder="APP_USR-..."
+                                    className="border-primary/20 focus-visible:ring-primary"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-sm font-semibold">URL de Webhook (MP Notification)</Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        readOnly
+                                        value="https://<tusubdominio>.supabase.co/functions/v1/mercadopago-webhook"
+                                        className="bg-muted/50 font-mono text-xs border-dashed"
+                                    />
+                                </div>
+                                <p className="text-[10px] text-muted-foreground italic">
+                                    Configura esta URL en el panel de Mercado Pago Developers bajo &quot;Notificaciones Webhooks&quot;.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="pt-4 flex flex-wrap gap-4 border-t">
+                            <Button className="font-bold px-8 shadow-md" onClick={() => handleSave('mp_config', mpConfig)} disabled={saving}>
+                                {saving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                Guardar Mercado Pago
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className="border-primary text-primary"
+                                onClick={() => handleConnect('mp')}
+                                disabled={!mpConfig.clientId}
+                            >
+                                <RefreshCw className="mr-2 h-4 w-4" /> Sincronizar Admin MP
+                            </Button>
+                        </div>
+
+                        {mpAuthStatus ? (
+                            <div className="flex items-center gap-4 p-4 bg-green-50 border border-green-200 rounded-xl">
+                                <CheckCircle2 className="h-6 w-6 text-green-600" />
+                                <div>
+                                    <p className="text-sm font-bold text-green-900">MP Conectado</p>
+                                    <p className="text-xs text-green-700">Token válido hasta: {new Date(mpAuthStatus.expires_at).toLocaleString()}</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                                <Key className="h-6 w-6 text-amber-600" />
+                                <div>
+                                    <p className="text-sm font-bold text-amber-900">Requiere Sincronización MP</p>
+                                    <p className="text-xs text-amber-700">Debes conectar tu cuenta para habilitar el procesamiento de pagos dinámico.</p>
                                 </div>
                             </div>
                         )}
 
-                        {searchParams.get('success') === 'connected' && (
-                            <div className="p-4 bg-green-600 text-white rounded-lg shadow-lg animate-in fade-in zoom-in duration-300">
-                                <p className="text-sm font-bold flex items-center gap-2">
-                                    <CheckCircle2 className="h-5 w-5" /> ¡Conexión con Mercado Libre establecida con éxito!
-                                </p>
-                            </div>
-                        )}
+                        <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                            <p className="text-sm text-blue-800">
+                                <strong>Nota:</strong> Para el Checkout API (Bricks), asegúrate de usar las credenciales de Producción o Prueba según el ambiente que desees testear.
+                            </p>
+                        </div>
                     </CardContent>
                 </Card>
             </TabsContent>

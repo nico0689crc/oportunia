@@ -4,12 +4,6 @@ import { getAppSettingsAction } from '@/actions/admin';
 import { encrypt, decrypt } from '@/lib/encryption';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
-interface MLConfig {
-    clientId: string;
-    clientSecret: string;
-    siteId: string;
-}
-
 import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
@@ -21,10 +15,12 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies();
     const storedVerifier = cookieStore.get('ml_code_verifier')?.value;
     const storedState = cookieStore.get('ml_auth_state')?.value;
+    const platform = (cookieStore.get('ml_auth_platform')?.value || 'ml') as 'ml' | 'mp';
 
     // Clean up cookies immediately
     cookieStore.delete('ml_code_verifier');
     cookieStore.delete('ml_auth_state');
+    cookieStore.delete('ml_auth_platform');
 
     if (error) {
         return NextResponse.redirect(new URL(`/admin/settings?error=${error}`, request.url));
@@ -41,11 +37,14 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        // Fetch config from DB instead of .env
-        const config = await getAppSettingsAction<MLConfig>('ml_config');
+        // Fetch config from DB based on platform
+        const configKey = platform === 'ml' ? 'ml_config' : 'mp_config';
+        const tokenKey = platform === 'ml' ? 'ml_auth_tokens' : 'mp_auth_tokens';
+
+        const config = await getAppSettingsAction<{ clientId: string; clientSecret: string }>(configKey);
 
         if (!config || !config.clientId || !config.clientSecret) {
-            console.error('ML Configuration missing in database');
+            console.error(`${platform.toUpperCase()} Configuration missing in database`);
             return NextResponse.redirect(new URL('/admin/settings?error=missing_config', request.url));
         }
 
@@ -54,7 +53,7 @@ export async function GET(request: NextRequest) {
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
         const redirectUri = `${baseUrl}/api/auth/ml/callback`;
 
-        console.log('Exchanging ML code for tokens with PKCE...', { clientId, redirectUri, hasVerifier: !!storedVerifier });
+        console.log(`Exchanging code for ${platform} tokens with PKCE...`, { clientId, redirectUri, hasVerifier: !!storedVerifier });
 
         const params = new URLSearchParams({
             grant_type: 'authorization_code',
@@ -74,7 +73,7 @@ export async function GET(request: NextRequest) {
         });
 
         const tokens = response.data;
-        console.log('ML Tokens received successfully:', {
+        console.log(`${platform.toUpperCase()} Tokens received successfully:`, {
             user_id: tokens.user_id,
             has_access: !!tokens.access_token,
         });
@@ -82,7 +81,7 @@ export async function GET(request: NextRequest) {
         const { error: saveError } = await supabaseAdmin
             .from('app_settings')
             .upsert({
-                key: 'ml_auth_tokens',
+                key: tokenKey,
                 value: {
                     access_token: encrypt(tokens.access_token),
                     refresh_token: encrypt(tokens.refresh_token),

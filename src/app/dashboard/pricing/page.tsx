@@ -2,29 +2,19 @@
 
 import { useState } from 'react';
 import { Check } from 'lucide-react';
-import { createSubscriptionPreference } from '@/lib/actions/mercadopago';
+import { PaymentModal } from '@/components/subscriptions/payment-modal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PLANS, type Plan } from '@/lib/subscriptions';
 
 export default function PricingPage() {
-    const [loading, setLoading] = useState<string | null>(null);
+    const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const handleSubscribe = async (plan: Plan) => {
+    const handleSubscribe = (plan: Plan) => {
         if (plan.tier === 'free') return;
-
-        setLoading(plan.id);
-        try {
-            const { url } = await createSubscriptionPreference(plan);
-            if (url) {
-                window.location.href = url;
-            }
-        } catch (error) {
-            console.error(error);
-            alert('Hubo un error al iniciar el proceso de suscripción.');
-        } finally {
-            setLoading(null);
-        }
+        setSelectedPlan(plan);
+        setIsModalOpen(true);
     };
 
     return (
@@ -75,15 +65,23 @@ export default function PricingPage() {
                             <Button
                                 className="w-full"
                                 variant={plan.highlight ? 'default' : 'outline'}
-                                disabled={plan.tier === 'free' || !!loading}
+                                disabled={plan.tier === 'free'}
                                 onClick={() => handleSubscribe(plan)}
                             >
-                                {loading === plan.id ? 'Cargando...' : plan.buttonText}
+                                {plan.buttonText}
                             </Button>
                         </CardFooter>
                     </Card>
                 ))}
             </div>
+
+            {selectedPlan && (
+                <PaymentModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    plan={selectedPlan}
+                />
+            )}
 
             <div className="mt-16 text-center text-sm text-muted-foreground">
                 <p>Todos los precios están expresados en Pesos Argentinos (ARS).</p>
