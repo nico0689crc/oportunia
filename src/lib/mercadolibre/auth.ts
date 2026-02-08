@@ -70,10 +70,9 @@ export class MlAuth {
     }
 
     /**
-     * Intercambia el código por un token
+     * Intercambia el código por un token (Usa endpoint universal de ML con platform_id)
      */
     static async exchangeCodeForToken(clientId: string, clientSecret: string, redirectUri: string, code: string, codeVerifier: string, platform: 'ml' | 'mp' = 'ml'): Promise<MlTokenResponse> {
-        const apiBaseUrl = platform === 'ml' ? 'https://api.mercadolibre.com' : 'https://api.mercadopago.com';
         const params = new URLSearchParams({
             grant_type: 'authorization_code',
             client_id: clientId,
@@ -84,7 +83,7 @@ export class MlAuth {
             platform_id: platform
         });
 
-        const response = await axios.post(`${apiBaseUrl}/oauth/token`, params.toString(), {
+        const response = await axios.post('https://api.mercadolibre.com/oauth/token', params.toString(), {
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Accept': 'application/json',
@@ -95,18 +94,18 @@ export class MlAuth {
     }
 
     /**
-     * Refresca el token
+     * Refresca el token (Usa endpoint universal de ML con platform_id)
      */
     static async refreshToken(clientId: string, clientSecret: string, refreshToken: string, platform: 'ml' | 'mp' = 'ml'): Promise<MlTokenResponse> {
-        const apiBaseUrl = platform === 'ml' ? 'https://api.mercadolibre.com' : 'https://api.mercadopago.com';
         const params = new URLSearchParams({
             grant_type: 'refresh_token',
             client_id: clientId,
             client_secret: clientSecret,
             refresh_token: refreshToken,
+            platform_id: platform
         });
 
-        const response = await axios.post(`${apiBaseUrl}/oauth/token`, params.toString(), {
+        const response = await axios.post('https://api.mercadolibre.com/oauth/token', params.toString(), {
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Accept': 'application/json',

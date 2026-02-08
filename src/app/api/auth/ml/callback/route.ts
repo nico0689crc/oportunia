@@ -50,15 +50,20 @@ export async function GET(request: NextRequest) {
         }
 
         const clientId = config.clientId;
-        const clientSecret = decrypt(config.clientSecret);
+        const decryptedSecret = decrypt(config.clientSecret);
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
         const redirectUri = `${baseUrl}/api/auth/ml/callback`;
 
-        console.log(`Exchanging code for ${platform} tokens with PKCE...`, { clientId, redirectUri, hasVerifier: !!storedVerifier });
+        console.log(`Exchanging code for ${platform} tokens with PKCE...`, {
+            clientId,
+            redirectUri,
+            hasVerifier: !!storedVerifier,
+            secretLength: decryptedSecret.length
+        });
 
         const tokens = await MlAuth.exchangeCodeForToken(
             clientId,
-            clientSecret,
+            decryptedSecret,
             redirectUri,
             code,
             storedVerifier || "",
