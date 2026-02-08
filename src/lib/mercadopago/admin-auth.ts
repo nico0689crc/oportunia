@@ -86,10 +86,12 @@ async function getValidToken(configKey: 'ml_config' | 'mp_config', tokenKey: 'ml
     }
 
     try {
+        const platform = configKey === 'ml_config' ? 'ml' : 'mp';
         const newTokens = await MlAuth.refreshToken(
             config.clientId,
             decryptedClientSecret,
-            decryptedRefreshToken
+            decryptedRefreshToken,
+            platform
         );
 
         // Save new tokens (ENCRYPTED)

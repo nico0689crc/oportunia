@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import axios from 'axios';
 import { getAppSettingsAction } from '@/actions/admin';
 import { encrypt, decrypt } from '@/lib/encryption';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { MlAuth } from '@/lib/mercadolibre/auth';
 
 import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
+    // ... rest of the constants remains same until try block
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
     const state = searchParams.get('state');
@@ -55,24 +56,14 @@ export async function GET(request: NextRequest) {
 
         console.log(`Exchanging code for ${platform} tokens with PKCE...`, { clientId, redirectUri, hasVerifier: !!storedVerifier });
 
-        const params = new URLSearchParams({
-            grant_type: 'authorization_code',
-            client_id: clientId,
-            client_secret: clientSecret,
-            code: code,
-            redirect_uri: redirectUri,
-        });
-
-        // Add code_verifier if we have it
-        if (storedVerifier) {
-            params.append('code_verifier', storedVerifier);
-        }
-
-        const response = await axios.post('https://api.mercadolibre.com/oauth/token', params.toString(), {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        });
-
-        const tokens = response.data;
+        const tokens = await MlAuth.exchangeCodeForToken(
+            clientId,
+            clientSecret,
+            redirectUri,
+            code,
+            storedVerifier || "",
+            platform
+        );
         console.log(`${platform.toUpperCase()} Tokens received successfully:`, {
             user_id: tokens.user_id,
             has_access: !!tokens.access_token,
@@ -99,17 +90,8 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.redirect(new URL('/admin/settings?success=connected', request.url));
     } catch (err: unknown) {
-        let message = 'Error desconocido';
-        if (axios.isAxiosError(err)) {
-            message = err.response?.data?.message || err.message;
-            if (err.response?.data) {
-                console.error('ML API Error Details:', err.response.data);
-            }
-        } else if (err instanceof Error) {
-            message = err.message;
-        }
-
-        console.error('Error in ML Auth Callback:', message);
+        console.error('Error in ML Auth Callback:', err);
+        const message = err instanceof Error ? err.message : 'Error desconocido';
         return NextResponse.redirect(new URL(`/admin/settings?error=auth_failed&details=${encodeURIComponent(message)}`, request.url));
     }
 }

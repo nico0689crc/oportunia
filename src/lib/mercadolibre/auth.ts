@@ -72,7 +72,8 @@ export class MlAuth {
     /**
      * Intercambia el código por un token
      */
-    static async exchangeCodeForToken(clientId: string, clientSecret: string, redirectUri: string, code: string, codeVerifier: string): Promise<MlTokenResponse> {
+    static async exchangeCodeForToken(clientId: string, clientSecret: string, redirectUri: string, code: string, codeVerifier: string, platform: 'ml' | 'mp' = 'ml'): Promise<MlTokenResponse> {
+        const apiBaseUrl = platform === 'ml' ? 'https://api.mercadolibre.com' : 'https://api.mercadopago.com';
         const params = new URLSearchParams({
             grant_type: 'authorization_code',
             client_id: clientId,
@@ -82,7 +83,7 @@ export class MlAuth {
             code_verifier: codeVerifier,
         });
 
-        const response = await axios.post(`${ML_API_BASE_URL}/oauth/token`, params.toString(), {
+        const response = await axios.post(`${apiBaseUrl}/oauth/token`, params.toString(), {
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Accept': 'application/json',
@@ -95,7 +96,8 @@ export class MlAuth {
     /**
      * Refresca el token
      */
-    static async refreshToken(clientId: string, clientSecret: string, refreshToken: string): Promise<MlTokenResponse> {
+    static async refreshToken(clientId: string, clientSecret: string, refreshToken: string, platform: 'ml' | 'mp' = 'ml'): Promise<MlTokenResponse> {
+        const apiBaseUrl = platform === 'ml' ? 'https://api.mercadolibre.com' : 'https://api.mercadopago.com';
         const params = new URLSearchParams({
             grant_type: 'refresh_token',
             client_id: clientId,
@@ -103,7 +105,7 @@ export class MlAuth {
             refresh_token: refreshToken,
         });
 
-        const response = await axios.post(`${ML_API_BASE_URL}/oauth/token`, params.toString(), {
+        const response = await axios.post(`${apiBaseUrl}/oauth/token`, params.toString(), {
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Accept': 'application/json',
