@@ -16,21 +16,10 @@ export default async function DashboardPage({ searchParams }: Props) {
 
     // Next.js 15+: searchParams is now async
     const params = await searchParams;
-    const planParam = params.plan;
-    let plan = Array.isArray(planParam) ? planParam[0] : planParam;
 
-    // Si no hay plan en la URL, buscamos en los metadatos de Clerk (el fallback definitivo)
-    if (!plan && user?.unsafeMetadata?.intendedPlan) {
-        plan = user.unsafeMetadata.intendedPlan as string;
-    }
-
-    // Si detectamos intención de un plan pago, validamos si ya tiene uno activo
-    if (plan && plan !== 'free' && userId) {
-        const sub = await getSubscriptionData(userId);
-        if (sub.status !== 'active') {
-            redirect(`/dashboard/billing/redirect?plan=${plan}`);
-        }
-    }
+    // Note: Removed automatic redirect logic to prevent infinite loops
+    // The redirect to billing happens from sign-up page via useEffect
+    // If user lands here with a plan param, the banner will handle it
 
     const stats = [
         { title: "Búsquedas", val: "12", icon: Search },

@@ -3,9 +3,12 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SECRET_KEY;
 
-if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('CRITICAL: Supabase environment variables are missing.');
-    console.error('Make sure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY are set.');
+if (!supabaseUrl) {
+    console.error('CRITICAL: Supabase environment variables are missing. NEXT_PUBLIC_SUPABASE_URL');
+}
+
+if (!supabaseServiceKey) {
+    console.error('CRITICAL: Supabase environment variables are missing. SUPABASE_SECRET_KEY');
 }
 
 // Cliente con service_role para operaciones seguras desde el servidor (Server Actions / API Routes)
