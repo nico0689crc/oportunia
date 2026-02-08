@@ -1,20 +1,39 @@
 'use client';
 
 import { useState } from 'react';
-import { Check } from 'lucide-react';
-import { PaymentModal } from '@/components/subscriptions/payment-modal';
+import { Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PLANS, type Plan } from '@/lib/plans';
+import { createSubscriptionPreference } from '@/lib/actions/mercadopago';
+import { toast } from 'sonner';
 
 export default function PricingPage() {
-    const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
 
-    const handleSubscribe = (plan: Plan) => {
+    const handleSubscribe = async (plan: Plan) => {
         if (plan.tier === 'free') return;
-        setSelectedPlan(plan);
-        setIsModalOpen(true);
+
+        setLoadingPlanId(plan.id);
+
+        try {
+            console.log('[Pricing] Creating subscription preference for:', plan.name);
+            const result = await createSubscriptionPreference(plan);
+
+            console.log('[Pricing] Redirecting to Mercado Pago:', result.url);
+
+            if (!result.url) {
+                throw new Error('No se recibió URL de pago de Mercado Pago');
+            }
+
+            // Redirect to Mercado Pago's hosted payment page
+            window.location.href = result.url;
+        } catch (error) {
+            console.error('[Pricing] Error creating subscription:', error);
+            const message = error instanceof Error ? error.message : 'Error al iniciar el proceso de suscripción';
+            toast.error(message);
+            setLoadingPlanId(null);
+        }
     };
 
     return (
@@ -65,23 +84,22 @@ export default function PricingPage() {
                             <Button
                                 className="w-full"
                                 variant={plan.highlight ? 'default' : 'outline'}
-                                disabled={plan.tier === 'free'}
+                                disabled={plan.tier === 'free' || loadingPlanId !== null}
                                 onClick={() => handleSubscribe(plan)}
                             >
-                                {plan.buttonText}
+                                {loadingPlanId === plan.id ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Redirigiendo a Mercado Pago...
+                                    </>
+                                ) : (
+                                    plan.buttonText
+                                )}
                             </Button>
                         </CardFooter>
                     </Card>
                 ))}
             </div>
-
-            {selectedPlan && (
-                <PaymentModal
-                    isOpen={isModalOpen}
-                    onClose={() => setIsModalOpen(false)}
-                    plan={selectedPlan}
-                />
-            )}
 
             <div className="mt-16 text-center text-sm text-muted-foreground">
                 <p>Todos los precios están expresados en Pesos Argentinos (ARS).</p>
