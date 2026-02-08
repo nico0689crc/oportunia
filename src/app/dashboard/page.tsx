@@ -14,7 +14,9 @@ export default async function DashboardPage({ searchParams }: Props) {
     const { userId } = await auth();
     const user = await currentUser();
 
-    const planParam = searchParams.plan;
+    // Next.js 15+: searchParams is now async
+    const params = await searchParams;
+    const planParam = params.plan;
     let plan = Array.isArray(planParam) ? planParam[0] : planParam;
 
     // Si no hay plan en la URL, buscamos en los metadatos de Clerk (el fallback definitivo)

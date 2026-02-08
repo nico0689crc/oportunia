@@ -10,13 +10,22 @@ interface Props {
 
 export default async function BillingRedirectPage({ searchParams }: Props) {
     const { userId } = await auth();
-    const planParam = searchParams.plan;
-    const planTier = Array.isArray(planParam) ? planParam[0] : planParam;
+    const user = await currentUser();
+
+    // Next.js 15+: searchParams is now async
+    const params = await searchParams;
+    const planParam = params.plan;
+    let planTier = Array.isArray(planParam) ? planParam[0] : planParam;
+
+    // Fallback: buscamos en los metadatos si no vino en la URL
+    if (!planTier && user?.unsafeMetadata?.intendedPlan) {
+        planTier = user.unsafeMetadata.intendedPlan as string;
+    }
 
     console.log('[BillingRedirect] Hit!', {
         userId,
         planTier,
-        allParams: searchParams
+        allParams: params
     });
 
     if (!userId) {
