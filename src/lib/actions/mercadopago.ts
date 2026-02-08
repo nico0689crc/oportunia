@@ -9,11 +9,13 @@ export async function createSubscriptionPreference(plan: {
     price: number;
     tier: string;
 }) {
-    const { userId } = await auth();
+    const { userId, sessionClaims } = await auth();
 
     if (!userId) {
         throw new Error('No estás autenticado');
     }
+
+    const payerEmail = (sessionClaims?.email as string) || 'test_user_123@test.com';
 
     const accessToken = await getValidAdminToken();
     const mongoClient = new MercadoPagoConfig({
@@ -33,9 +35,8 @@ export async function createSubscriptionPreference(plan: {
                     currency_id: 'ARS',
                 },
                 back_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?subscription=success`,
-                external_reference: userId,
-                payer_email: 'test_user_123@test.com', // En prod sacar de Clerk
-                card_token_id: '', // Se llena en el checkout de MP
+                external_reference: `${userId}|${plan.tier}`,
+                payer_email: payerEmail,
                 status: 'pending',
             },
         });

@@ -83,14 +83,27 @@ serve(async (req) => {
             if (!response.ok) throw new Error(`Error consultando ${type} en MP: ${response.statusText}`);
 
             const data = await response.json();
+            const externalRef = data.external_reference || '';
+            const [userId, tierFromRef] = externalRef.split('|');
+
+            console.log(`Webhook raw data: ref=${externalRef}, userId=${userId}, tier=${tierFromRef}`);
+
+            if (!userId) {
+                console.error('No se pudo encontrar el user_id en external_reference');
+                return new Response(JSON.stringify({ error: 'No user_id found' }), { status: 200 });
+            }
 
             if (type === 'payment') {
                 if (data.status === 'approved') {
+                    // Si el tier no viene en el ref (viejo formato), intentamos metadata
+                    const tier = tierFromRef || data.metadata?.plan_tier || 'pro';
+
                     await supabase.from('subscriptions').upsert({
-                        user_id: data.external_reference,
-                        tier: data.metadata?.plan_tier || 'pro',
+                        user_id: userId,
+                        tier: tier,
                         status: 'active'
                     });
+                    console.log(`Pago aprobado: Usuario ${userId} -> Tier ${tier}`);
                 }
             } else {
                 // Suscripción recurrente (preapproval)
@@ -100,20 +113,19 @@ serve(async (req) => {
                     cancelled: 'canceled'
                 };
 
-                const userId = data.external_reference;
                 const status = statusMap[data.status] || 'inactive';
-                let tier = 'pro';
-                if (data.reason.toLowerCase().includes('elite')) tier = 'elite';
+                let tier = tierFromRef || 'pro';
 
-                if (userId) {
-                    await supabase.from('subscriptions').upsert({
-                        user_id: userId,
-                        tier: tier,
-                        status: status,
-                        mp_subscription_id: id
-                    });
-                    console.log(`Suscripción recurrente actualizada para ${userId}: ${status} (${tier})`);
-                }
+                // Fallback si por alguna razón no viene el tier en el ref
+                if (!tierFromRef && data.reason?.toLowerCase().includes('elite')) tier = 'elite';
+
+                await supabase.from('subscriptions').upsert({
+                    user_id: userId,
+                    tier: tier,
+                    status: status,
+                    mp_subscription_id: id
+                });
+                console.log(`Suscripción recurrente actualizada para ${userId}: ${status} (${tier})`);
             }
         }
 
@@ -121,7 +133,7 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json' },
             status: 200,
         })
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error en webhook:', error.message)
         return new Response(JSON.stringify({ error: error.message }), {
             headers: { 'Content-Type': 'application/json' },
