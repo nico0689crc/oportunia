@@ -91,7 +91,17 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL('/admin/settings?success=connected', request.url));
     } catch (err: unknown) {
         console.error('Error in ML Auth Callback:', err);
-        const message = err instanceof Error ? err.message : 'Error desconocido';
+        let message = 'Error desconocido';
+
+        // Dynamic import axios to check for axios errors without Top Level import
+        const axios = (await import('axios')).default;
+        if (axios.isAxiosError(err) && err.response) {
+            console.error('Mercado Pago API Error Body:', JSON.stringify(err.response.data, null, 2));
+            message = err.response.data.message || err.response.data.error || message;
+        } else if (err instanceof Error) {
+            message = err.message;
+        }
+
         return NextResponse.redirect(new URL(`/admin/settings?error=auth_failed&details=${encodeURIComponent(message)}`, request.url));
     }
 }

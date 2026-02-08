@@ -81,6 +81,7 @@ export class MlAuth {
             code: code,
             redirect_uri: redirectUri,
             code_verifier: codeVerifier,
+            platform_id: platform
         });
 
         const response = await axios.post(`${apiBaseUrl}/oauth/token`, params.toString(), {
