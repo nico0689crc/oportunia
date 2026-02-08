@@ -20,6 +20,8 @@ export async function createSubscriptionPreference(plan: {
     const payerEmail = user.emailAddresses[0]?.emailAddress || 'test_user_123@test.com';
 
     const accessToken = await getValidMPToken();
+    console.log('[MP DEBUG] Active Access Token Prefix:', accessToken.substring(0, 15) + '...');
+
     const mongoClient = new MercadoPagoConfig({
         accessToken: accessToken,
     });
