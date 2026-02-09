@@ -48,19 +48,25 @@ export default function AdminSettingsForm() {
         accessToken: "",
         publicKey: ""
     });
+    const [planIds, setPlanIds] = useState({
+        proId: "",
+        eliteId: ""
+    });
     const [mlAuthStatus, setMlAuthStatus] = useState<AuthStatus | null>(null);
     const [mpAuthStatus, setMpAuthStatus] = useState<AuthStatus | null>(null);
 
     const loadSettings = useCallback(async () => {
         setLoading(true);
         try {
-            const [savedMlConfig, savedMpConfig, savedMlAuth, savedMpAuth, savedMpMode, savedMpTestConfig] = await Promise.all([
+            const [savedMlConfig, savedMpConfig, savedMlAuth, savedMpAuth, savedMpMode, savedMpTestConfig, savedPlanProId, savedPlanEliteId] = await Promise.all([
                 getAppSettingsAction<MLConfig>('ml_config'),
                 getAppSettingsAction<MPConfig>('mp_config'),
                 getAppSettingsAction<AuthStatus>('ml_auth_tokens'),
                 getAppSettingsAction<AuthStatus>('mp_auth_tokens'),
                 getAppSettingsAction<'production' | 'test'>('mp_mode'),
-                getAppSettingsAction<{ accessToken: string; publicKey: string }>('mp_test_config')
+                getAppSettingsAction<{ accessToken: string; publicKey: string }>('mp_test_config'),
+                getAppSettingsAction<string>('mp_plan_pro_id'),
+                getAppSettingsAction<string>('mp_plan_elite_id')
             ]);
 
             if (savedMlConfig) {
@@ -82,6 +88,12 @@ export default function AdminSettingsForm() {
                 setMpTestConfig({
                     accessToken: savedMpTestConfig.accessToken ? '••••••••••••••••' : '',
                     publicKey: savedMpTestConfig.publicKey || ''
+                });
+            }
+            if (savedPlanProId || savedPlanEliteId) {
+                setPlanIds({
+                    proId: savedPlanProId || '',
+                    eliteId: savedPlanEliteId || ''
                 });
             }
         } catch (error) {
@@ -122,6 +134,12 @@ export default function AdminSettingsForm() {
         try {
             // Save mode first
             await saveAppSettingsAction('mp_mode', mpMode);
+
+            // Save plan IDs
+            await Promise.all([
+                saveAppSettingsAction('mp_plan_pro_id', planIds.proId),
+                saveAppSettingsAction('mp_plan_elite_id', planIds.eliteId)
+            ]);
 
             if (mpMode === 'test') {
                 // Save test config (server will handle encryption)
@@ -362,6 +380,51 @@ export default function AdminSettingsForm() {
                                         </p>
                                     </div>
                                 </div>
+
+                                {/* Plan IDs Configuration */}
+                                <div className="space-y-4 pt-4 border-t">
+                                    <div>
+                                        <h4 className="text-sm font-semibold mb-3">IDs de Planes de Suscripción</h4>
+                                        <p className="text-xs text-muted-foreground mb-4">
+                                            Configura los IDs de los planes PRO y ELITE creados en Mercado Pago
+                                        </p>
+                                    </div>
+
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="mp_plan_pro_id" className="text-sm font-semibold">Plan PRO ID</Label>
+                                            <Input
+                                                id="mp_plan_pro_id"
+                                                value={planIds.proId}
+                                                onChange={(e) => setPlanIds({ ...planIds, proId: e.target.value })}
+                                                placeholder="9ca6b291fdea4956ac9712162f26f160"
+                                                className="border-primary/20 focus-visible:ring-primary font-mono text-xs"
+                                            />
+                                            <p className="text-xs text-muted-foreground">
+                                                ID del plan PRO en Mercado Pago Dashboard
+                                            </p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="mp_plan_elite_id" className="text-sm font-semibold">Plan ELITE ID</Label>
+                                            <Input
+                                                id="mp_plan_elite_id"
+                                                value={planIds.eliteId}
+                                                onChange={(e) => setPlanIds({ ...planIds, eliteId: e.target.value })}
+                                                placeholder="6fe66c35cddc46f6b7d37caab8c32bad"
+                                                className="border-primary/20 focus-visible:ring-primary font-mono text-xs"
+                                            />
+                                            <p className="text-xs text-muted-foreground">
+                                                ID del plan ELITE en Mercado Pago Dashboard
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {/* Test Mode Warning */}
+                        {mpMode === 'test' && (
+                            <>
 
                                 <div className="space-y-3 p-4 bg-amber-50 border-2 border-amber-300 rounded-xl">
                                     <div className="flex items-start gap-3">

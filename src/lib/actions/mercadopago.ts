@@ -188,10 +188,19 @@ export async function createRecurringSubscription(plan: {
     console.log('--- MP DEBUG: Entering createRecurringSubscription ---');
     console.log('[MP Preapproval] Plan:', plan.tier);
 
-    // Get plan ID from environment
-    const planId = plan.tier === 'pro'
-        ? process.env.MP_PLAN_PRO_ID
-        : process.env.MP_PLAN_ELITE_ID;
+    // Get plan ID from database settings (with fallback to env vars)
+    const { getAppSettingsAction } = await import('@/actions/admin');
+    let planId: string | null = plan.tier === 'pro'
+        ? (await getAppSettingsAction<string>('mp_plan_pro_id')) || null
+        : (await getAppSettingsAction<string>('mp_plan_elite_id')) || null;
+
+    // Fallback to environment variables if not in database
+    if (!planId) {
+        console.log('[MP Preapproval] Plan ID not in database, using environment variable');
+        planId = (plan.tier === 'pro'
+            ? process.env.MP_PLAN_PRO_ID
+            : process.env.MP_PLAN_ELITE_ID) || null;
+    }
 
     if (!planId) {
         console.error('[MP Preapproval Error] Plan ID not configured for tier:', plan.tier);
