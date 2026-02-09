@@ -50,7 +50,9 @@ export default function AdminSettingsForm() {
     });
     const [planIds, setPlanIds] = useState({
         proId: "",
-        eliteId: ""
+        eliteId: "",
+        proDevId: "",
+        eliteDevId: ""
     });
     const [mlAuthStatus, setMlAuthStatus] = useState<AuthStatus | null>(null);
     const [mpAuthStatus, setMpAuthStatus] = useState<AuthStatus | null>(null);
@@ -58,7 +60,7 @@ export default function AdminSettingsForm() {
     const loadSettings = useCallback(async () => {
         setLoading(true);
         try {
-            const [savedMlConfig, savedMpConfig, savedMlAuth, savedMpAuth, savedMpMode, savedMpTestConfig, savedPlanProId, savedPlanEliteId] = await Promise.all([
+            const [savedMlConfig, savedMpConfig, savedMlAuth, savedMpAuth, savedMpMode, savedMpTestConfig, savedPlanProId, savedPlanEliteId, savedPlanProDevId, savedPlanEliteDevId] = await Promise.all([
                 getAppSettingsAction<MLConfig>('ml_config'),
                 getAppSettingsAction<MPConfig>('mp_config'),
                 getAppSettingsAction<AuthStatus>('ml_auth_tokens'),
@@ -66,7 +68,9 @@ export default function AdminSettingsForm() {
                 getAppSettingsAction<'production' | 'test'>('mp_mode'),
                 getAppSettingsAction<{ accessToken: string; publicKey: string }>('mp_test_config'),
                 getAppSettingsAction<string>('mp_plan_pro_id'),
-                getAppSettingsAction<string>('mp_plan_elite_id')
+                getAppSettingsAction<string>('mp_plan_elite_id'),
+                getAppSettingsAction<string>('mp_plan_pro_dev_id'),
+                getAppSettingsAction<string>('mp_plan_elite_dev_id')
             ]);
 
             if (savedMlConfig) {
@@ -90,10 +94,12 @@ export default function AdminSettingsForm() {
                     publicKey: savedMpTestConfig.publicKey || ''
                 });
             }
-            if (savedPlanProId || savedPlanEliteId) {
+            if (savedPlanProId || savedPlanEliteId || savedPlanProDevId || savedPlanEliteDevId) {
                 setPlanIds({
                     proId: savedPlanProId || '',
-                    eliteId: savedPlanEliteId || ''
+                    eliteId: savedPlanEliteId || '',
+                    proDevId: savedPlanProDevId || '',
+                    eliteDevId: savedPlanEliteDevId || ''
                 });
             }
         } catch (error) {
@@ -138,7 +144,9 @@ export default function AdminSettingsForm() {
             // Save plan IDs
             await Promise.all([
                 saveAppSettingsAction('mp_plan_pro_id', planIds.proId),
-                saveAppSettingsAction('mp_plan_elite_id', planIds.eliteId)
+                saveAppSettingsAction('mp_plan_elite_id', planIds.eliteId),
+                saveAppSettingsAction('mp_plan_pro_dev_id', planIds.proDevId),
+                saveAppSettingsAction('mp_plan_elite_dev_id', planIds.eliteDevId)
             ]);
 
             if (mpMode === 'test') {
@@ -390,32 +398,69 @@ export default function AdminSettingsForm() {
                                         </p>
                                     </div>
 
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="mp_plan_pro_id" className="text-sm font-semibold">Plan PRO ID</Label>
-                                            <Input
-                                                id="mp_plan_pro_id"
-                                                value={planIds.proId}
-                                                onChange={(e) => setPlanIds({ ...planIds, proId: e.target.value })}
-                                                placeholder="9ca6b291fdea4956ac9712162f26f160"
-                                                className="border-primary/20 focus-visible:ring-primary font-mono text-xs"
-                                            />
-                                            <p className="text-xs text-muted-foreground">
-                                                ID del plan PRO en Mercado Pago Dashboard
-                                            </p>
+                                    {/* Production Plan IDs */}
+                                    <div>
+                                        <h5 className="text-xs font-semibold text-muted-foreground mb-2">Producción</h5>
+                                        <div className="grid gap-4 md:grid-cols-2">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="mp_plan_pro_id" className="text-sm font-semibold">Plan PRO ID</Label>
+                                                <Input
+                                                    id="mp_plan_pro_id"
+                                                    value={planIds.proId}
+                                                    onChange={(e) => setPlanIds({ ...planIds, proId: e.target.value })}
+                                                    placeholder="9ca6b291fdea4956ac9712162f26f160"
+                                                    className="border-primary/20 focus-visible:ring-primary font-mono text-xs"
+                                                />
+                                                <p className="text-xs text-muted-foreground">
+                                                    ID del plan PRO en Mercado Pago Dashboard
+                                                </p>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="mp_plan_elite_id" className="text-sm font-semibold">Plan ELITE ID</Label>
+                                                <Input
+                                                    id="mp_plan_elite_id"
+                                                    value={planIds.eliteId}
+                                                    onChange={(e) => setPlanIds({ ...planIds, eliteId: e.target.value })}
+                                                    placeholder="6fe66c35cddc46f6b7d37caab8c32bad"
+                                                    className="border-primary/20 focus-visible:ring-primary font-mono text-xs"
+                                                />
+                                                <p className="text-xs text-muted-foreground">
+                                                    ID del plan ELITE en Mercado Pago Dashboard
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="mp_plan_elite_id" className="text-sm font-semibold">Plan ELITE ID</Label>
-                                            <Input
-                                                id="mp_plan_elite_id"
-                                                value={planIds.eliteId}
-                                                onChange={(e) => setPlanIds({ ...planIds, eliteId: e.target.value })}
-                                                placeholder="6fe66c35cddc46f6b7d37caab8c32bad"
-                                                className="border-primary/20 focus-visible:ring-primary font-mono text-xs"
-                                            />
-                                            <p className="text-xs text-muted-foreground">
-                                                ID del plan ELITE en Mercado Pago Dashboard
-                                            </p>
+                                    </div>
+
+                                    {/* Development Plan IDs */}
+                                    <div className="pt-4 border-t">
+                                        <h5 className="text-xs font-semibold text-muted-foreground mb-2">Desarrollo (ngrok/localhost)</h5>
+                                        <div className="grid gap-4 md:grid-cols-2">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="mp_plan_pro_dev_id" className="text-sm font-semibold">Plan PRO DEV ID</Label>
+                                                <Input
+                                                    id="mp_plan_pro_dev_id"
+                                                    value={planIds.proDevId}
+                                                    onChange={(e) => setPlanIds({ ...planIds, proDevId: e.target.value })}
+                                                    placeholder="f913df8a1fe74fbead1160633948faf5"
+                                                    className="border-primary/20 focus-visible:ring-primary font-mono text-xs"
+                                                />
+                                                <p className="text-xs text-muted-foreground">
+                                                    ID del plan PRO para desarrollo local
+                                                </p>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="mp_plan_elite_dev_id" className="text-sm font-semibold">Plan ELITE DEV ID</Label>
+                                                <Input
+                                                    id="mp_plan_elite_dev_id"
+                                                    value={planIds.eliteDevId}
+                                                    onChange={(e) => setPlanIds({ ...planIds, eliteDevId: e.target.value })}
+                                                    placeholder="2778bf5abb354abe9cbc822bdbccfd73"
+                                                    className="border-primary/20 focus-visible:ring-primary font-mono text-xs"
+                                                />
+                                                <p className="text-xs text-muted-foreground">
+                                                    ID del plan ELITE para desarrollo local
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

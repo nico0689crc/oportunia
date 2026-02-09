@@ -188,22 +188,40 @@ export async function createRecurringSubscription(plan: {
     console.log('--- MP DEBUG: Entering createRecurringSubscription ---');
     console.log('[MP Preapproval] Plan:', plan.tier);
 
+    // Determine environment (development uses ngrok, production uses vercel)
+    const isProduction = process.env.NODE_ENV === 'production' ||
+        process.env.VERCEL_ENV === 'production';
+
+    console.log('[MP Preapproval] Environment:', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
+
     // Get plan ID from database settings (with fallback to env vars)
     const { getAppSettingsAction } = await import('@/actions/admin');
-    let planId: string | null = plan.tier === 'pro'
-        ? (await getAppSettingsAction<string>('mp_plan_pro_id')) || null
-        : (await getAppSettingsAction<string>('mp_plan_elite_id')) || null;
+
+    // Select correct plan ID based on environment and tier
+    const planIdKey = plan.tier === 'pro'
+        ? (isProduction ? 'mp_plan_pro_id' : 'mp_plan_pro_dev_id')
+        : (isProduction ? 'mp_plan_elite_id' : 'mp_plan_elite_dev_id');
+
+    console.log('[MP Preapproval] Looking for plan ID in DB:', planIdKey);
+
+    let planId: string | null = (await getAppSettingsAction<string>(planIdKey)) || null;
 
     // Fallback to environment variables if not in database
     if (!planId) {
         console.log('[MP Preapproval] Plan ID not in database, using environment variable');
-        planId = (plan.tier === 'pro'
-            ? process.env.MP_PLAN_PRO_ID
-            : process.env.MP_PLAN_ELITE_ID) || null;
+        if (isProduction) {
+            planId = (plan.tier === 'pro'
+                ? process.env.MP_PLAN_PRO_ID
+                : process.env.MP_PLAN_ELITE_ID) || null;
+        } else {
+            planId = (plan.tier === 'pro'
+                ? process.env.MP_PLAN_PRO_DEV_ID
+                : process.env.MP_PLAN_ELITE_DEV_ID) || null;
+        }
     }
 
     if (!planId) {
-        console.error('[MP Preapproval Error] Plan ID not configured for tier:', plan.tier);
+        console.error('[MP Preapproval Error] Plan ID not configured for tier:', plan.tier, 'environment:', isProduction ? 'production' : 'development');
         throw new Error(`Plan de suscripción no configurado para: ${plan.tier}`);
     }
     // Test mode checking removed - payer email not needed in simplified checkout flow
