@@ -5,7 +5,7 @@ import { Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PLANS, type Plan } from '@/lib/plans';
-import { createSubscriptionPreference } from '@/lib/actions/mercadopago';
+import { createRecurringSubscription } from '@/lib/actions/mercadopago';
 import { toast } from 'sonner';
 
 export default function PricingPage() {
@@ -17,8 +17,8 @@ export default function PricingPage() {
         setLoadingPlanId(plan.id);
 
         try {
-            console.log('[Pricing] Creating subscription preference for:', plan.name);
-            const result = await createSubscriptionPreference({
+            console.log('[Pricing] Creating recurring subscription for:', plan.name);
+            const result = await createRecurringSubscription({
                 name: plan.name,
                 price: plan.price,
                 tier: plan.tier

@@ -1,7 +1,7 @@
 'use server';
 
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { MercadoPagoConfig, Preference, PreApproval } from 'mercadopago';
 import { getValidMPToken } from '@/lib/mercadopago/admin-auth';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
@@ -150,6 +150,121 @@ export async function createSubscriptionPreference(plan: {
             errorMessage += ` (API: ${JSON.stringify(error.response.data || error.response)})`;
         }
 
+
         throw new Error('Error al iniciar el proceso de suscripción: ' + errorMessage);
+    }
+}
+
+/**
+ * Creates a recurring subscription using Mercado Pago Preapproval API
+ * This enables automatic monthly billing
+ */
+export async function createRecurringSubscription(plan: {
+    name: string;
+    price: number;
+    tier: string;
+}) {
+    const { userId, sessionClaims } = await auth();
+
+    if (!userId) {
+        console.error('[MP Preapproval Error] No userId found in session');
+        throw new Error('No estás autenticado');
+    }
+
+    console.log('--- MP DEBUG: Entering createRecurringSubscription ---');
+    console.log('[MP Preapproval] Plan:', plan.tier);
+
+    // Get plan ID from environment
+    const planId = plan.tier === 'pro'
+        ? process.env.MP_PLAN_PRO_ID
+        : process.env.MP_PLAN_ELITE_ID;
+
+    if (!planId) {
+        console.error('[MP Preapproval Error] Plan ID not configured for tier:', plan.tier);
+        throw new Error(`Plan de suscripción no configurado para: ${plan.tier}`);
+    }
+
+    console.log('[MP Preapproval] Using plan ID:', planId);
+
+    // Get access token
+    let accessToken: string;
+    try {
+        accessToken = await getValidMPToken();
+        console.log('[MP Preapproval] Got access token');
+    } catch (tokenError: unknown) {
+        console.error('[MP Preapproval Critical] Failed to get Access Token:', tokenError);
+        const errorMessage = tokenError instanceof Error ? tokenError.message : 'Error desconocido';
+        throw new Error('Error de configuración de pago (Token): ' + errorMessage);
+    }
+
+    // Check if we're in test mode
+    const { getAppSettingsAction } = await import('@/actions/admin');
+    const mpMode = await getAppSettingsAction<string>('mp_mode');
+    const isTestMode = mpMode === 'test';
+    const siteId = process.env.ML_SITE_ID || 'MLA';
+
+    // In test mode, use a unique test email
+    const testPayerEmail = `test_buyer_${userId.substring(userId.length - 5)}_${siteId.toLowerCase()}@testuser.com`;
+    const finalPayerEmail = isTestMode ? testPayerEmail : (sessionClaims?.email as string);
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+    try {
+        // Create preapproval subscription using direct API call
+        // Note: The SDK doesn't have full Preapproval support yet, so we use fetch
+        const preapprovalBody = {
+            preapproval_plan_id: planId,
+            reason: `Suscripción Oportunia - Plan ${plan.name}`,
+            external_reference: `${userId}|${plan.tier}|subscription`,
+            payer_email: finalPayerEmail,
+            back_url: `${appUrl}/dashboard/billing/success`,
+            status: 'pending', // User must authorize the subscription
+        };
+
+        console.log('[MP Preapproval] Creating subscription with body:', JSON.stringify(preapprovalBody, null, 2));
+
+        const response = await fetch('https://api.mercadopago.com/preapproval', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(preapprovalBody),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('[MP Preapproval] API Error:', errorData);
+            throw new Error(`MP API Error: ${JSON.stringify(errorData)}`);
+        }
+
+        const result = await response.json();
+        console.log('[MP Preapproval] Subscription created successfully:', result.id);
+
+        // Save pending subscription to database
+        console.log('[MP Preapproval] Upserting pending subscription record for:', userId);
+        const { error: upsertError } = await supabaseAdmin
+            .from('subscriptions')
+            .upsert({
+                user_id: userId,
+                tier: plan.tier,
+                status: 'pending',
+                mp_subscription_id: result.id,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
+
+        if (upsertError) {
+            console.error('[MP Preapproval] Error upserting subscription:', upsertError);
+        } else {
+            console.log('[MP Preapproval] Subscription upserted successfully');
+        }
+
+        return { url: result.init_point };
+    } catch (error: unknown) {
+        console.error('=== FULL MP PREAPPROVAL ERROR ===');
+        console.error(error);
+
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        throw new Error('Error al crear suscripción recurrente: ' + errorMessage);
     }
 }
