@@ -61,8 +61,7 @@ export async function createSubscriptionPreference(plan: {
 
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const preferenceBody: Record<string, any> = {
+        const preferenceBody = {
             items: [
                 {
                     id: plan.tier,
@@ -75,7 +74,7 @@ export async function createSubscriptionPreference(plan: {
             ],
             payer: {
                 email: finalPayerEmail,
-            },
+            } as Record<string, unknown>,
             back_urls: {
                 success: `${appUrl}/dashboard/billing/success`,
                 failure: `${appUrl}/dashboard/pricing?error=checkout_failed`,
@@ -111,7 +110,7 @@ export async function createSubscriptionPreference(plan: {
                 user_id: userId,
                 tier: plan.tier,
                 status: 'pending',
-                mp_subscription_id: result.id,
+                preapproval_id: result.id,
                 updated_at: new Date().toISOString()
             }, { onConflict: 'user_id' });
 
@@ -122,34 +121,49 @@ export async function createSubscriptionPreference(plan: {
         }
 
         return { url: result.init_point };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('=== FULL MP ERROR OBJECT ===');
         console.error(JSON.stringify(error, null, 2));
         console.error('=== ERROR KEYS ===');
-        console.error(Object.keys(error));
 
-        if (error?.cause) {
-            console.error('=== ERROR CAUSE ===');
-            console.error(JSON.stringify(error.cause, null, 2));
+        if (error && typeof error === 'object') {
+            console.error(Object.keys(error));
+
+            // @ts-expect-error - MP SDK Error object might have cause
+            if (error.cause) {
+                console.error('=== ERROR CAUSE ===');
+                // @ts-expect-error - MP SDK Error object might have cause
+                console.error(JSON.stringify(error.cause, null, 2));
+            }
+
+            // @ts-expect-error - MP SDK Error object might have response
+            if (error.response) {
+                console.error('=== ERROR RESPONSE ===');
+                // @ts-expect-error - MP SDK Error object might have response
+                console.error(JSON.stringify(error.response, null, 2));
+            }
         }
 
-        if (error?.response) {
-            console.error('=== ERROR RESPONSE ===');
-            console.error(JSON.stringify(error.response, null, 2));
+        let errorMessage = 'Error desconocido';
+        if (error instanceof Error) {
+            errorMessage = error.message;
+        } else if (typeof error === 'string') {
+            errorMessage = error;
         }
 
-        let errorMessage = error?.message || (typeof error === 'string' ? error : 'Error desconocido');
+        if (error && typeof error === 'object') {
+            // @ts-expect-error - MP SDK Error object might have status and message
+            if (error.status && error.message) {
+                // @ts-expect-error - MP SDK Error object might have status and message
+                errorMessage = `${error.message} (Status: ${error.status})`;
+            }
 
-        // Si el error es un objeto de respuesta de MP (que a veces el SDK devuelve así)
-        if (error?.status && error?.message) {
-            errorMessage = `${error.message} (Status: ${error.status})`;
+            // @ts-expect-error - MP SDK Error object might have response
+            if (error.response) {
+                // @ts-expect-error - MP SDK Error object might have response
+                errorMessage += ` (API: ${JSON.stringify(error.response.data || error.response)})`;
+            }
         }
-
-        if (error?.response) {
-            errorMessage += ` (API: ${JSON.stringify(error.response.data || error.response)})`;
-        }
-
 
         throw new Error('Error al iniciar el proceso de suscripción: ' + errorMessage);
     }
@@ -249,7 +263,7 @@ export async function createRecurringSubscription(plan: {
                 user_id: userId,
                 tier: plan.tier,
                 status: 'pending',
-                mp_subscription_id: result.id,
+                preapproval_id: result.id,
                 updated_at: new Date().toISOString()
             }, { onConflict: 'user_id' });
 

@@ -377,16 +377,18 @@ serve(async (req) => {
                     status: subscription.status
                 });
 
+                // Map MP status to app status
+                const appStatus = subscription.status === 'authorized' ? 'active' : subscription.status;
+
                 // Update subscription in database
                 const { error } = await supabase
                     .from('subscriptions')
                     .upsert({
                         user_id: userId,
                         tier: planTier,
-                        status: subscription.status === 'authorized' ? 'active' : subscription.status,
+                        status: appStatus,
                         preapproval_id: subscription.id,
                         subscription_status: subscription.status,
-                        mp_subscription_id: subscription.id,
                         next_billing_date: subscription.next_payment_date,
                         updated_at: new Date().toISOString(),
                     }, { onConflict: 'user_id' });
@@ -462,6 +464,7 @@ serve(async (req) => {
                         last_payment_date: payment.date_approved,
                         next_billing_date: nextBilling.toISOString(),
                         status: payment.status === 'approved' ? 'active' : 'failed',
+                        subscription_status: payment.status === 'approved' ? 'authorized' : payment.status,
                         updated_at: new Date().toISOString(),
                     })
                     .eq('preapproval_id', payment.preapproval_id);

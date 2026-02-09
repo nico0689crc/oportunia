@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
                         user_id: userId,
                         tier,
                         status: 'active',
-                        mp_subscription_id: payment.id.toString(),
+                        preapproval_id: payment.id.toString(),
                         updated_at: new Date().toISOString(),
                     }, { onConflict: 'user_id' });
 
