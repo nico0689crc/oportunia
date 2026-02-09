@@ -1,7 +1,7 @@
 'use server';
 
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { MercadoPagoConfig, Preference, PreApproval } from 'mercadopago';
+import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { getValidMPToken } from '@/lib/mercadopago/admin-auth';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
@@ -266,5 +266,131 @@ export async function createRecurringSubscription(plan: {
 
         const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
         throw new Error('Error al crear suscripción recurrente: ' + errorMessage);
+    }
+}
+
+/**
+ * Updates a subscription status in Mercado Pago
+ */
+async function updateSubscriptionStatus(subscriptionId: string, status: 'authorized' | 'paused' | 'cancelled') {
+    const accessToken = await getValidMPToken();
+
+    const response = await fetch(`https://api.mercadopago.com/preapproval/${subscriptionId}`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        console.error(`[MP Subscription] Error updating status to ${status}:`, errorData);
+        throw new Error(`Error de Mercado Pago: ${JSON.stringify(errorData)}`);
+    }
+
+    return await response.json();
+}
+
+/**
+ * Cancels a recurring subscription
+ */
+export async function cancelSubscription(subscriptionId: string) {
+    const { userId } = await auth();
+    if (!userId) throw new Error('No estás autenticado');
+
+    console.log(`[MP Subscription] Cancelling subscription: ${subscriptionId} for user: ${userId}`);
+
+    try {
+        const result = await updateSubscriptionStatus(subscriptionId, 'cancelled');
+
+        // Update database
+        const { error } = await supabaseAdmin
+            .from('subscriptions')
+            .update({
+                status: 'cancelled',
+                subscription_status: 'cancelled',
+                updated_at: new Date().toISOString()
+            })
+            .eq('preapproval_id', subscriptionId);
+
+        if (error) {
+            console.error('[MP Subscription] Error updating database after cancellation:', error);
+        }
+
+        return { success: true, status: result.status };
+    } catch (error: unknown) {
+        console.error('[MP Subscription] Cancellation failed:', error);
+        const message = error instanceof Error ? error.message : 'Error desconocido';
+        throw new Error('No se pudo cancelar la suscripción: ' + message);
+    }
+}
+
+/**
+ * Pauses a recurring subscription
+ */
+export async function pauseSubscription(subscriptionId: string) {
+    const { userId } = await auth();
+    if (!userId) throw new Error('No estás autenticado');
+
+    console.log(`[MP Subscription] Pausing subscription: ${subscriptionId} for user: ${userId}`);
+
+    try {
+        const result = await updateSubscriptionStatus(subscriptionId, 'paused');
+
+        // Update database
+        const { error } = await supabaseAdmin
+            .from('subscriptions')
+            .update({
+                status: 'paused',
+                subscription_status: 'paused',
+                updated_at: new Date().toISOString()
+            })
+            .eq('preapproval_id', subscriptionId);
+
+        if (error) {
+            console.error('[MP Subscription] Error updating database after pausing:', error);
+        }
+
+        return { success: true, status: result.status };
+    } catch (error: unknown) {
+        console.error('[MP Subscription] Pause failed:', error);
+        const message = error instanceof Error ? error.message : 'Error desconocido';
+        throw new Error('No se pudo pausar la suscripción: ' + message);
+    }
+}
+
+/**
+ * Reactivates a paused subscription
+ */
+export async function reactivateSubscription(subscriptionId: string) {
+    const { userId } = await auth();
+    if (!userId) throw new Error('No estás autenticado');
+
+    console.log(`[MP Subscription] Reactivating subscription: ${subscriptionId} for user: ${userId}`);
+
+    try {
+        const result = await updateSubscriptionStatus(subscriptionId, 'authorized');
+
+        // Update database
+        const { error } = await supabaseAdmin
+            .from('subscriptions')
+            .update({
+                status: 'active',
+                subscription_status: 'authorized',
+                updated_at: new Date().toISOString()
+            })
+            .eq('preapproval_id', subscriptionId);
+
+        if (error) {
+            console.error('[MP Subscription] Error updating database after reactivation:', error);
+        }
+
+        return { success: true, status: result.status };
+    } catch (error: unknown) {
+        console.error('[MP Subscription] Reactivation failed:', error);
+        const message = error instanceof Error ? error.message : 'Error desconocido';
+        throw new Error('No se pudo reactivar la suscripción: ' + message);
     }
 }

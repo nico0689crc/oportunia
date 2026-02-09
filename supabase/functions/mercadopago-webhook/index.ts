@@ -309,8 +309,171 @@ serve(async (req) => {
             } else {
                 console.log('[MP Webhook] Not a subscription payment, ignoring');
             }
+        } else if (type === 'subscription_preapproval' && paymentId) {
+            // Handle subscription creation/update events
+            console.log('[MP Webhook] Processing subscription preapproval notification:', paymentId);
+
+            // Get MP access token
+            let mpAccessToken: string;
+            try {
+                mpAccessToken = await getMPAccessToken();
+                console.log('[MP Webhook] Successfully obtained MP access token');
+            } catch (tokenError) {
+                console.error('[MP Webhook] Failed to get access token:', tokenError);
+                return new Response(JSON.stringify({
+                    error: 'Failed to get access token',
+                    details: tokenError instanceof Error ? tokenError.message : 'Unknown error'
+                }), {
+                    headers: { 'Content-Type': 'application/json' },
+                    status: 401,
+                });
+            }
+
+            // Fetch subscription details from Mercado Pago
+            const subscriptionResponse = await fetch(
+                `https://api.mercadopago.com/preapproval/${paymentId}`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${mpAccessToken}`,
+                    },
+                }
+            );
+
+            if (!subscriptionResponse.ok) {
+                console.error('[MP Webhook] Failed to fetch subscription details:', {
+                    status: subscriptionResponse.status,
+                    statusText: subscriptionResponse.statusText,
+                    subscriptionId: paymentId
+                });
+
+                return new Response(JSON.stringify({
+                    received: true,
+                    note: 'Subscription not found'
+                }), {
+                    headers: { 'Content-Type': 'application/json' },
+                    status: 200,
+                });
+            }
+
+            const subscription = await subscriptionResponse.json();
+
+            console.log('[MP Webhook] Subscription details:', {
+                id: subscription.id,
+                status: subscription.status,
+                external_reference: subscription.external_reference,
+                next_payment_date: subscription.next_payment_date,
+            });
+
+            // Parse external_reference to get user_id and tier
+            const externalRef = subscription.external_reference;
+            if (externalRef && externalRef.includes('subscription')) {
+                const parts = externalRef.split('|');
+                const userId = parts[0];
+                const planTier = parts[1];
+
+                console.log('[MP Webhook] Subscription detected:', {
+                    userId,
+                    planTier,
+                    status: subscription.status
+                });
+
+                // Update subscription in database
+                const { error } = await supabase
+                    .from('subscriptions')
+                    .upsert({
+                        user_id: userId,
+                        tier: planTier,
+                        status: subscription.status === 'authorized' ? 'active' : subscription.status,
+                        preapproval_id: subscription.id,
+                        subscription_status: subscription.status,
+                        mp_subscription_id: subscription.id,
+                        next_billing_date: subscription.next_payment_date,
+                        updated_at: new Date().toISOString(),
+                    }, { onConflict: 'user_id' });
+
+                if (error) {
+                    console.error('[MP Webhook] Error updating subscription:', error);
+                    return new Response(JSON.stringify({ error: 'Database error' }), {
+                        headers: { 'Content-Type': 'application/json' },
+                        status: 200,
+                    });
+                }
+
+                console.log('[MP Webhook] Subscription updated successfully for user:', userId);
+            }
+        } else if (type === 'subscription_authorized_payment' && paymentId) {
+            // Handle automatic recurring payment events
+            console.log('[MP Webhook] Processing subscription authorized payment:', paymentId);
+
+            // Get MP access token
+            let mpAccessToken: string;
+            try {
+                mpAccessToken = await getMPAccessToken();
+            } catch (tokenError) {
+                console.error('[MP Webhook] Failed to get access token:', tokenError);
+                return new Response(JSON.stringify({
+                    error: 'Failed to get access token',
+                }), {
+                    headers: { 'Content-Type': 'application/json' },
+                    status: 401,
+                });
+            }
+
+            // Fetch payment details
+            const paymentResponse = await fetch(
+                `https://api.mercadopago.com/v1/payments/${paymentId}`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${mpAccessToken}`,
+                    },
+                }
+            );
+
+            if (!paymentResponse.ok) {
+                console.error('[MP Webhook] Failed to fetch payment details');
+                return new Response(JSON.stringify({
+                    received: true,
+                    note: 'Payment not found'
+                }), {
+                    headers: { 'Content-Type': 'application/json' },
+                    status: 200,
+                });
+            }
+
+            const payment = await paymentResponse.json();
+
+            console.log('[MP Webhook] Recurring payment details:', {
+                id: payment.id,
+                status: payment.status,
+                preapproval_id: payment.preapproval_id,
+                date_approved: payment.date_approved,
+            });
+
+            // Update subscription with last payment info
+            if (payment.preapproval_id) {
+                // Calculate next billing date (30 days from payment date)
+                const nextBilling = new Date(payment.date_approved || new Date());
+                nextBilling.setDate(nextBilling.getDate() + 30);
+
+                const { error } = await supabase
+                    .from('subscriptions')
+                    .update({
+                        last_payment_id: payment.id.toString(),
+                        last_payment_date: payment.date_approved,
+                        next_billing_date: nextBilling.toISOString(),
+                        status: payment.status === 'approved' ? 'active' : 'failed',
+                        updated_at: new Date().toISOString(),
+                    })
+                    .eq('preapproval_id', payment.preapproval_id);
+
+                if (error) {
+                    console.error('[MP Webhook] Error updating subscription payment:', error);
+                } else {
+                    console.log('[MP Webhook] Subscription payment updated successfully');
+                }
+            }
         } else {
-            console.log('[MP Webhook] Ignoring non-payment notification:', type);
+            console.log('[MP Webhook] Ignoring notification type:', type);
         }
 
         // Always return 200 to acknowledge receipt

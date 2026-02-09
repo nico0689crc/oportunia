@@ -10,12 +10,16 @@ export interface SubscriptionData {
     usage_count: number;
     usage_reset_at: string;
     status: string;
+    preapproval_id?: string;
+    subscription_status?: string;
+    last_payment_date?: string;
+    next_billing_date?: string;
 }
 
 export async function getSubscriptionData(userId: string): Promise<SubscriptionData> {
     const { data, error } = await supabaseAdmin
         .from('subscriptions')
-        .select('tier, usage_count, usage_reset_at, status')
+        .select('tier, usage_count, usage_reset_at, status, preapproval_id, subscription_status, last_payment_date, next_billing_date')
         .eq('user_id', userId)
         .single();
 
