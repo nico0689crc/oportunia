@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { createSubscriptionPreference } from '@/lib/actions/mercadopago';
+import { createRecurringSubscription } from '@/lib/actions/mercadopago';
 import { PLANS } from '@/lib/plans';
 import { getSubscriptionData } from '@/lib/subscriptions';
 import { Loader2, ShieldCheck } from 'lucide-react';
@@ -54,7 +54,7 @@ export default async function BillingRedirectPage({ searchParams }: Props) {
 
     let redirectUrl: string | null = null;
     try {
-        const { url } = await createSubscriptionPreference(plan);
+        const { url } = await createRecurringSubscription(plan);
         redirectUrl = url || null;
     } catch (error) {
         console.error('Error in automated billing redirect:', error);

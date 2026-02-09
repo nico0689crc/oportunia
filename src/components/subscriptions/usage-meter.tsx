@@ -8,7 +8,11 @@ export async function UsageMeter() {
     if (!userId) return null;
 
     const sub = await getSubscriptionData(userId);
-    const effectiveTier = (sub.tier !== 'free' && sub.status !== 'active') ? 'free' : sub.tier;
+    const isActive = sub.status === 'active' || sub.subscription_status === 'authorized';
+    const isCancelled = sub.status === 'cancelled' || sub.subscription_status === 'cancelled';
+    const hasNotExpired = sub.next_billing_date && new Date(sub.next_billing_date) > new Date();
+
+    const effectiveTier = (isActive || (isCancelled && hasNotExpired)) ? sub.tier : 'free';
     const limit = PLAN_LIMITS[effectiveTier]['niche_search'];
 
     // Si es ilimitado, no mostramos el medidor de progreso ordinario

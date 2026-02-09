@@ -37,8 +37,14 @@ export async function getSubscriptionData(userId: string): Promise<SubscriptionD
 
 export async function getUserTier(userId: string): Promise<SubscriptionTier> {
     const data = await getSubscriptionData(userId);
-    // Solo devolvemos el tier si está activo o si es el plan gratuito
-    if (data.tier !== 'free' && data.status !== 'active') {
+    // Solo devolvemos el tier si está activo, si es el plan gratuito,
+    // o si está cancelado pero aún no ha vencido el periodo (next_billing_date en el futuro)
+    const isStatusActive = data.status === 'active' || data.subscription_status === 'authorized';
+    const isCancelled = data.status === 'cancelled' || data.subscription_status === 'cancelled';
+    const expirationDate = data.next_billing_date ? new Date(data.next_billing_date) : new Date(data.usage_reset_at);
+    const hasNotExpired = expirationDate > new Date();
+
+    if (data.tier !== 'free' && !isStatusActive && !(isCancelled && hasNotExpired)) {
         return 'free';
     }
     return data.tier;
@@ -47,8 +53,14 @@ export async function getUserTier(userId: string): Promise<SubscriptionTier> {
 export async function checkAndIncrementUsage(userId: string, feature: keyof typeof PLAN_LIMITS['free']): Promise<{ allowed: boolean; remaining: number }> {
     const sub = await getSubscriptionData(userId);
 
-    // Si no está activo y no es free, forzamos límites de free
-    const effectiveTier = (sub.tier !== 'free' && sub.status !== 'active') ? 'free' : sub.tier;
+    // Si no está activo, no es free y no está en periodo de gracia, forzamos límites de free
+    const isStatusActive = sub.status === 'active' || sub.subscription_status === 'authorized';
+    const isCancelled = sub.status === 'cancelled' || sub.subscription_status === 'cancelled';
+    const expirationDate = sub.next_billing_date ? new Date(sub.next_billing_date) : new Date(sub.usage_reset_at);
+    const hasNotExpired = expirationDate > new Date();
+
+    const isBenefitActive = isStatusActive || (isCancelled && hasNotExpired);
+    const effectiveTier = isBenefitActive ? sub.tier : 'free';
     const limit = PLAN_LIMITS[effectiveTier as keyof typeof PLAN_LIMITS][feature];
 
     // Si el límite es Infinity, siempre permitido

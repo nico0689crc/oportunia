@@ -27,10 +27,16 @@ export async function GET(request: NextRequest) {
             }, { status: 500 });
         }
 
-        // Query payment from Mercado Pago
-        console.log('[Payment Check API] Fetching payment from MP...');
+        const externalRefFromQuery = searchParams.get('external_reference');
+
+        // Determine if it's a preapproval or a payment
+        // Subscription IDs usually start with 'pre' or are long numeric but different
+        const isPreapproval = paymentId.toString().startsWith('pre') || paymentId.length > 20;
+        const endpoint = isPreapproval ? `preapproval/${paymentId}` : `v1/payments/${paymentId}`;
+
+        console.log(`[Payment Check API] Fetching from MP endpoint: ${endpoint}`);
         const response = await fetch(
-            `https://api.mercadopago.com/v1/payments/${paymentId}`,
+            `https://api.mercadopago.com/${endpoint}`,
             {
                 headers: {
                     'Authorization': `Bearer ${mpAccessToken}`,
@@ -41,56 +47,57 @@ export async function GET(request: NextRequest) {
         if (!response.ok) {
             console.error('[Payment Check API] MP API error:', {
                 status: response.status,
-                statusText: response.statusText
+                endpoint
             });
 
-            // If payment not found, it might be a preference_id instead
-            if (response.status === 404) {
-                console.log('[Payment Check API] Payment not found, might be preference_id');
-                return NextResponse.json({
-                    error: 'Payment not found',
-                    status: 'pending',
-                    note: 'Payment might still be processing'
-                }, { status: 200 });
-            }
-
             return NextResponse.json({
-                error: 'Failed to fetch payment from MP',
-                status: response.status
-            }, { status: response.status });
+                error: 'Object not found or API error',
+                status: 'pending',
+                note: 'Might still be processing'
+            }, { status: 200 });
         }
 
-        const payment = await response.json();
+        const mpObject = await response.json();
 
-        console.log('[Payment Check API] Payment details:', {
-            id: payment.id,
-            status: payment.status,
-            external_reference: payment.external_reference,
+        // Standardize status and external_reference across different MP objects
+        const status = mpObject.status;
+        const externalRef = mpObject.external_reference || externalRefFromQuery;
+        const finalId = mpObject.id;
+        const nextBillingDate = mpObject.next_payment_date || mpObject.auto_recurring?.next_payment_date;
+
+        console.log('[Payment Check API] Resolved details:', {
+            id: finalId,
+            status,
+            nextBillingDate,
+            external_reference: externalRef,
         });
 
-        // If payment is approved, update subscription
-        if (payment.status === 'approved') {
-            console.log('[Payment Check API] Payment approved, updating subscription...');
+        // If payment/preapproval is approved or authorized, update subscription
+        if (status === 'approved' || status === 'authorized') {
+            console.log(`[Payment Check API] Status ${status} confirmed, updating subscription...`);
 
-            const externalRef = payment.external_reference;
+            // ... (existing candidates logic)
+            let userIdCandidate = null;
+            let tierCandidate = 'pro'; // Default
+
             if (externalRef && externalRef.includes('|')) {
                 const parts = externalRef.split('|');
-                const userId = parts[0];
-                const tier = parts[1];
+                userIdCandidate = parts[0];
+                tierCandidate = parts[1];
+            } else {
+                userIdCandidate = searchParams.get('user_id');
+            }
 
-                console.log('[Payment Check API] Extracted from external_reference:', { userId, tier });
-
-                // Calculate next renewal date (30 days from now)
-                const nextRenewal = new Date();
-                nextRenewal.setDate(nextRenewal.getDate() + 30);
-
+            if (userIdCandidate) {
                 const { error } = await supabaseAdmin
                     .from('subscriptions')
                     .upsert({
-                        user_id: userId,
-                        tier,
+                        user_id: userIdCandidate,
+                        tier: tierCandidate,
                         status: 'active',
-                        preapproval_id: payment.id.toString(),
+                        subscription_status: status,
+                        preapproval_id: isPreapproval ? finalId : undefined,
+                        next_billing_date: nextBillingDate,
                         updated_at: new Date().toISOString(),
                     }, { onConflict: 'user_id' });
 
@@ -98,21 +105,21 @@ export async function GET(request: NextRequest) {
                     console.error('[Payment Check API] Error updating subscription:', error);
                     return NextResponse.json({
                         error: 'Database error',
-                        status: payment.status,
-                        payment_id: payment.id,
+                        status: status,
+                        id: finalId,
                     }, { status: 500 });
                 }
 
-                console.log('[Payment Check API] Subscription activated successfully for user:', userId);
+                console.log('[Payment Check API] Subscription activated successfully for user:', userIdCandidate);
             } else {
-                console.warn('[Payment Check API] Invalid external_reference format:', externalRef);
+                console.warn('[Payment Check API] Could not identify user for activation');
             }
         }
 
         return NextResponse.json({
-            status: payment.status,
-            payment_id: payment.id,
-            external_reference: payment.external_reference,
+            status: status,
+            id: finalId,
+            external_reference: externalRef,
         });
     } catch (error) {
         console.error('[Payment Check API] Unexpected error:', error);

@@ -271,14 +271,16 @@ serve(async (req) => {
                     const nextRenewal = new Date();
                     nextRenewal.setDate(nextRenewal.getDate() + 30);
 
+                    const finalPreapprovalId = payment.preapproval_id?.toString() || payment.id.toString();
+
                     const { error } = await supabase
                         .from('subscriptions')
                         .upsert({
                             user_id: userId,
                             tier: planTier,
                             status: 'active',
-                            mp_subscription_id: payment.id.toString(),
-                            next_renewal_date: nextRenewal.toISOString(),
+                            preapproval_id: finalPreapprovalId,
+                            next_billing_date: nextRenewal.toISOString(),
                             last_payment_id: payment.id.toString(),
                             updated_at: new Date().toISOString(),
                         }, { onConflict: 'user_id' });
@@ -366,12 +368,30 @@ serve(async (req) => {
 
             // Parse external_reference to get user_id and tier
             const externalRef = subscription.external_reference;
-            if (externalRef && externalRef.includes('subscription')) {
-                const parts = externalRef.split('|');
-                const userId = parts[0];
-                const planTier = parts[1];
+            let userId = null;
+            let planTier = 'pro'; // Default
 
-                console.log('[MP Webhook] Subscription detected:', {
+            if (externalRef && externalRef.includes('|')) {
+                const parts = externalRef.split('|');
+                userId = parts[0];
+                planTier = parts[1];
+            } else if (subscription.payer_email) {
+                // Fallback: search user by email if external_reference is missing (plan-base flow)
+                console.log('[MP Webhook] No external_reference, searching user by email:', subscription.payer_email);
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('email', subscription.payer_email)
+                    .single();
+
+                if (profile) {
+                    userId = profile.id;
+                    console.log('[MP Webhook] Found user by email:', userId);
+                }
+            }
+
+            if (userId) {
+                console.log('[MP Webhook] Subscription detected for user:', {
                     userId,
                     planTier,
                     status: subscription.status
@@ -379,6 +399,22 @@ serve(async (req) => {
 
                 // Map MP status to app status
                 const appStatus = subscription.status === 'authorized' ? 'active' : subscription.status;
+
+                // For cancelled subscriptions, preserve the next_billing_date if MP doesn't send it
+                let nextBillingDate = subscription.next_payment_date;
+                if (appStatus === 'cancelled' && !nextBillingDate) {
+                    // Fetch existing subscription to preserve the date
+                    const { data: existingSub } = await supabase
+                        .from('subscriptions')
+                        .select('next_billing_date')
+                        .eq('user_id', userId)
+                        .single();
+
+                    if (existingSub?.next_billing_date) {
+                        nextBillingDate = existingSub.next_billing_date;
+                        console.log('[MP Webhook] Preserving existing next_billing_date for cancelled subscription:', nextBillingDate);
+                    }
+                }
 
                 // Update subscription in database
                 const { error } = await supabase
@@ -389,7 +425,7 @@ serve(async (req) => {
                         status: appStatus,
                         preapproval_id: subscription.id,
                         subscription_status: subscription.status,
-                        next_billing_date: subscription.next_payment_date,
+                        next_billing_date: nextBillingDate,
                         updated_at: new Date().toISOString(),
                     }, { onConflict: 'user_id' });
 
@@ -402,6 +438,8 @@ serve(async (req) => {
                 }
 
                 console.log('[MP Webhook] Subscription updated successfully for user:', userId);
+            } else {
+                console.warn('[MP Webhook] Could not identify user for subscription:', subscription.id);
             }
         } else if (type === 'subscription_authorized_payment' && paymentId) {
             // Handle automatic recurring payment events

@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useAuth } from '@clerk/nextjs';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
 export default function PaymentSuccessClient() {
+    const { userId } = useAuth();
     const searchParams = useSearchParams();
     const router = useRouter();
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -12,30 +14,37 @@ export default function PaymentSuccessClient() {
     const [attempts, setAttempts] = useState(0);
 
     useEffect(() => {
-        // Get payment_id from URL - MP uses different parameter names
+        if (!userId) {
+            console.log('[Payment Success] Waiting for auth...');
+            return;
+        }
+        // Get identification IDs from URL - MP uses different names depending on flow
         const paymentId = searchParams.get('payment_id') ||
             searchParams.get('collection_id') ||
+            searchParams.get('preapproval_id') ||
             searchParams.get('preference_id');
 
+        const externalReference = searchParams.get('external_reference');
         const collectionStatus = searchParams.get('collection_status');
         const paymentStatus = searchParams.get('status');
 
-        console.log('[Payment Success] URL params:', {
+        console.log('[Payment Success] URL params identified:', {
             paymentId,
+            externalReference,
             collectionStatus,
             paymentStatus,
             allParams: Object.fromEntries(searchParams.entries())
         });
 
         if (!paymentId) {
-            console.error('[Payment Success] No payment ID found in URL');
+            console.error('[Payment Success] No payment ID or Preapproval ID found in URL');
             setStatus('error');
             setMessage('No se encontró información del pago');
             return;
         }
 
         // If MP already tells us it's approved, we can skip some polling
-        if (collectionStatus === 'approved' || paymentStatus === 'approved') {
+        if (collectionStatus === 'approved' || paymentStatus === 'approved' || paymentStatus === 'authorized') {
             setMessage('Pago aprobado, activando suscripción...');
         }
 
@@ -50,12 +59,14 @@ export default function PaymentSuccessClient() {
             try {
                 console.log(`[Payment Success] Checking payment (attempt ${pollCount}/${maxPolls})...`);
 
-                const response = await fetch(`/api/payments/check?payment_id=${paymentId}`);
+                // We pass external_reference as well to help the backend link the user
+                // We also pass the current userId as a fallback
+                const response = await fetch(`/api/payments/check?payment_id=${paymentId}${externalReference ? `&external_reference=${encodeURIComponent(externalReference)}` : ''}&user_id=${userId}`);
                 const data = await response.json();
 
                 console.log('[Payment Success] Response:', data);
 
-                if (data.status === 'approved') {
+                if (data.status === 'approved' || data.status === 'authorized') {
                     console.log('[Payment Success] Payment approved!');
                     setStatus('success');
                     setMessage('¡Pago exitoso! Tu suscripción ha sido activada.');
@@ -107,7 +118,7 @@ export default function PaymentSuccessClient() {
 
         // Start checking immediately
         checkPayment();
-    }, [searchParams, router]);
+    }, [searchParams, router, userId]);
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">

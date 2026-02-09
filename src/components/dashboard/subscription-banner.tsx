@@ -16,8 +16,11 @@ interface Props {
 export function SubscriptionBanner({ subscription }: Props) {
     const [isVisible, setIsVisible] = useState(true);
 
-    // No mostramos nada si ya está activo o si es el plan free real
-    if (!isVisible || subscription.status === 'active' || subscription.tier === 'free') {
+    // No mostramos nada si ya está activo, si es el plan free real, o si está cancelado (se mantiene el beneficio hasta fin de ciclo)
+    if (!isVisible ||
+        subscription.status === 'active' ||
+        subscription.status === 'cancelled' ||
+        subscription.tier === 'free') {
         return null;
     }
 
